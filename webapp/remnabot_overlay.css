@@ -1,8 +1,20 @@
-/* Remna-Bot Floating Overlay Bar, Sidebar Integration & Targeted Remnawave Color Engine */
+/* Remna-Bot Floating Overlay Bar, Sidebar Integration & Bedolaga-Grade Customization System */
 
 /* Enforce bottom padding on Remnawave body & main containers so overlay bar NEVER covers content */
 html, body, #app, #root, main, [class*="main"], .layout, .page-wrapper {
     padding-bottom: 95px !important;
+}
+
+/* Background Canvas Animation Container */
+#remna-canvas-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: -1;
+    opacity: 0.8;
 }
 
 /* Sidebar Custom Injected Menu Item */
@@ -30,7 +42,7 @@ html, body, #app, #root, main, [class*="main"], .layout, .page-wrapper {
     transform: translateX(4px) !important;
 }
 
-/* Floating Remna-Bot Toolbar (Set z-index to 9999 so open drawers sit ABOVE overlay bar) */
+/* Floating Remna-Bot Toolbar */
 #remnabot-overlay-bar {
     position: fixed;
     bottom: 16px;
@@ -188,7 +200,7 @@ html, body, #app, #root, main, [class*="main"], .layout, .page-wrapper {
     border: 1px solid rgba(255, 255, 255, 0.16);
     border-radius: 24px;
     width: 100%;
-    max-width: 520px;
+    max-width: 540px;
     padding: 24px;
     color: #f8fafc;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85), 0 0 35px rgba(99, 102, 241, 0.25);
@@ -258,40 +270,89 @@ html, body, #app, #root, main, [class*="main"], .layout, .page-wrapper {
     color: #ffffff;
 }
 
-.theme-card-grid {
+/* Bedolaga-Style Customization Grid Layout */
+.section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #38bdf8;
+    margin: 16px 0 10px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.fx-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 10px;
-    margin-top: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+    gap: 8px;
+    margin-bottom: 16px;
 }
 
-.theme-card {
-    padding: 12px;
-    border-radius: 14px;
+.fx-card {
+    padding: 10px 8px;
+    border-radius: 12px;
     background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     cursor: pointer;
-    transition: all 0.2s ease;
     text-align: center;
+    transition: all 0.2s ease;
+    font-size: 11px;
+    font-weight: 600;
+    color: #cbd5e1;
 }
 
-.theme-card:hover {
-    transform: translateY(-2px);
+.fx-card:hover {
+    background: rgba(99, 102, 241, 0.2);
     border-color: rgba(129, 140, 248, 0.5);
-    background: rgba(99, 102, 241, 0.15);
+    transform: translateY(-2px);
 }
 
-.theme-card.active {
+.fx-card.active {
+    background: rgba(99, 102, 241, 0.35);
     border-color: #818cf8;
-    background: rgba(99, 102, 241, 0.25);
+    color: #ffffff;
     box-shadow: 0 0 12px rgba(129, 140, 248, 0.4);
 }
 
-.theme-card .preview-circle {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    margin: 0 auto 8px auto;
+.color-picker-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.color-picker-item {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.color-picker-item label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #cbd5e1;
+}
+
+.color-picker-item input[type="color"] {
+    -webkit-appearance: none;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    background: none;
+}
+
+.color-picker-item input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.color-picker-item input[type="color"]::-webkit-color-swatch {
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 8px;
 }
 
 .remna-form-group {
@@ -343,112 +404,4 @@ html, body, #app, #root, main, [class*="main"], .layout, .page-wrapper {
 
 .remna-btn-primary:active {
     transform: scale(0.98);
-}
-
-/* ==========================================================================
-   TARGETED REMNAWAVE COLOR RECOLORING ENGINE (Page, Sidebar & Cards)
-   ========================================================================== */
-
-/* 1. Cyberpunk Neon (Purple/Magenta/Cyan) */
-body.theme-cyberpunk, html.theme-cyberpunk {
-    background-color: #0b0614 !important;
-}
-
-body.theme-cyberpunk aside,
-body.theme-cyberpunk nav,
-body.theme-cyberpunk [class*="card"],
-body.theme-cyberpunk [class*="panel"],
-body.theme-cyberpunk [class*="drawer"],
-body.theme-cyberpunk [class*="bg-slate"],
-body.theme-cyberpunk [class*="bg-zinc"],
-body.theme-cyberpunk [class*="bg-gray"],
-body.theme-cyberpunk [class*="bg-dark"],
-body.theme-cyberpunk [class*="bg-[#"] {
-    background-color: #160b26 !important;
-    border-color: rgba(192, 132, 252, 0.3) !important;
-}
-
-body.theme-cyberpunk [aria-current="page"],
-body.theme-cyberpunk [class*="active"]:not(#remnabot-overlay-bar *):not(#remna-custom-modal *) {
-    background: linear-gradient(135deg, #a855f7, #ec4899) !important;
-    color: #ffffff !important;
-    border-color: #c084fc !important;
-}
-
-/* 2. Emerald Matrix (Green/Cyan) */
-body.theme-emerald, html.theme-emerald {
-    background-color: #03120d !important;
-}
-
-body.theme-emerald aside,
-body.theme-emerald nav,
-body.theme-emerald [class*="card"],
-body.theme-emerald [class*="panel"],
-body.theme-emerald [class*="drawer"],
-body.theme-emerald [class*="bg-slate"],
-body.theme-emerald [class*="bg-zinc"],
-body.theme-emerald [class*="bg-gray"],
-body.theme-emerald [class*="bg-dark"],
-body.theme-emerald [class*="bg-[#"] {
-    background-color: #092119 !important;
-    border-color: rgba(16, 185, 129, 0.3) !important;
-}
-
-body.theme-emerald [aria-current="page"],
-body.theme-emerald [class*="active"]:not(#remnabot-overlay-bar *):not(#remna-custom-modal *) {
-    background: linear-gradient(135deg, #10b981, #06b6d4) !important;
-    color: #ffffff !important;
-    border-color: #34d399 !important;
-}
-
-/* 3. Sunset Orange (Fire/Amber) */
-body.theme-sunset, html.theme-sunset {
-    background-color: #140804 !important;
-}
-
-body.theme-sunset aside,
-body.theme-sunset nav,
-body.theme-sunset [class*="card"],
-body.theme-sunset [class*="panel"],
-body.theme-sunset [class*="drawer"],
-body.theme-sunset [class*="bg-slate"],
-body.theme-sunset [class*="bg-zinc"],
-body.theme-sunset [class*="bg-gray"],
-body.theme-sunset [class*="bg-dark"],
-body.theme-sunset [class*="bg-[#"] {
-    background-color: #241008 !important;
-    border-color: rgba(249, 115, 22, 0.3) !important;
-}
-
-body.theme-sunset [aria-current="page"],
-body.theme-sunset [class*="active"]:not(#remnabot-overlay-bar *):not(#remna-custom-modal *) {
-    background: linear-gradient(135deg, #f97316, #ef4444) !important;
-    color: #ffffff !important;
-    border-color: #fb923c !important;
-}
-
-/* 4. OLED Pure Black */
-body.theme-oled, html.theme-oled {
-    background-color: #000000 !important;
-}
-
-body.theme-oled aside,
-body.theme-oled nav,
-body.theme-oled [class*="card"],
-body.theme-oled [class*="panel"],
-body.theme-oled [class*="drawer"],
-body.theme-oled [class*="bg-slate"],
-body.theme-oled [class*="bg-zinc"],
-body.theme-oled [class*="bg-gray"],
-body.theme-oled [class*="bg-dark"],
-body.theme-oled [class*="bg-[#"] {
-    background-color: #09090b !important;
-    border-color: #27272a !important;
-}
-
-body.theme-oled [aria-current="page"],
-body.theme-oled [class*="active"]:not(#remnabot-overlay-bar *):not(#remna-custom-modal *) {
-    background: linear-gradient(135deg, #2563eb, #3b82f6) !important;
-    color: #ffffff !important;
-    border-color: #60a5fa !important;
 }

@@ -1,28 +1,259 @@
-// Remna-Bot Overlay Engine, Custom Sidebar Integration & Full Color Customizer
+// Remna-Bot Overlay Engine, Custom Sidebar Integration & Bedolaga-Grade Theme Customizer
 (function() {
-    console.log("🚀 Remna-Bot Sidebar & Theme Customizer Engine Loaded!");
+    console.log("🚀 Remna-Bot Sidebar, Live FX & Theme Customizer Engine Loaded!");
 
-    const themes = [
-        { id: "theme-default", name: "Original Dark", color: "#6366f1" },
-        { id: "theme-cyberpunk", name: "Cyberpunk Neon 🟣", color: "#c084fc" },
-        { id: "theme-emerald", name: "Emerald Matrix 🟢", color: "#10b981" },
-        { id: "theme-sunset", name: "Sunset Orange 🟠", color: "#f97316" },
-        { id: "theme-oled", name: "OLED Pure Black 🖤", color: "#3b82f6" }
+    const presets = [
+        { id: "preset-default", name: "Стандарт", accent: "#6366f1", bg: "#0b0f19", card: "#131927", text: "#f8fafc" },
+        { id: "preset-ocean", name: "Океан 🌊", accent: "#06b6d4", bg: "#041525", card: "#0a253c", text: "#e0f2fe" },
+        { id: "preset-forest", name: "Лес 🌲", accent: "#10b981", bg: "#041c14", card: "#0a2f23", text: "#ecfdf5" },
+        { id: "preset-sunset", name: "Закат 🌅", accent: "#f97316", bg: "#1c0d06", card: "#2e160a", text: "#fff7ed" },
+        { id: "preset-violet", name: "Фиолет 💜", accent: "#a855f7", bg: "#140726", card: "#210c3d", text: "#f5f3ff" },
+        { id: "preset-rose", name: "Роза 🌸", accent: "#ec4899", bg: "#1c0613", card: "#2f0b21", text: "#fdf2f8" },
+        { id: "preset-midnight", name: "Полночь 🌌", accent: "#3b82f6", bg: "#050a17", card: "#0b152d", text: "#eff6ff" },
+        { id: "preset-turquoise", name: "Бирюза 💎", accent: "#14b6a6", bg: "#041816", card: "#092a27", text: "#f0fdf4" }
     ];
 
-    let currentTheme = localStorage.getItem("remnabot_theme") || "theme-default";
+    const fxList = [
+        { id: "fx-none", name: "Без фона 🚫" },
+        { id: "fx-matrix", name: "Matrix Rain 🟢" },
+        { id: "fx-stars", name: "Starfield 🌌" },
+        { id: "fx-sparkles", name: "Fireflies ✨" },
+        { id: "fx-constellation", name: "Constellation 🕸️" },
+        { id: "fx-snow", name: "Snowfall ❄️" }
+    ];
+
+    let currentPreset = localStorage.getItem("remnabot_preset") || "preset-default";
+    let currentFx = localStorage.getItem("remnabot_fx") || "fx-none";
+    let customColors = JSON.parse(localStorage.getItem("remnabot_custom_colors") || "null");
     let isMinimized = false;
-    let fetchedKeys = [];
+    let animFrameId = null;
 
-    function applyCurrentTheme() {
-        const allThemeClasses = themes.map(t => t.id);
-        document.body.classList.remove(...allThemeClasses);
-        document.documentElement.classList.remove(...allThemeClasses);
-
-        if (currentTheme !== "theme-default") {
-            document.body.classList.add(currentTheme);
-            document.documentElement.classList.add(currentTheme);
+    // --- Live Canvas Background FX Engine ---
+    function initCanvasFx() {
+        let canvas = document.getElementById("remna-canvas-bg");
+        if (!canvas) {
+            canvas = document.createElement("canvas");
+            canvas.id = "remna-canvas-bg";
+            document.body.appendChild(canvas);
         }
+
+        const ctx = canvas.getContext("2d");
+        let width = (canvas.width = window.innerWidth);
+        let height = (canvas.height = window.innerHeight);
+
+        window.onresize = () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        };
+
+        if (animFrameId) cancelAnimationFrame(animFrameId);
+
+        if (currentFx === "fx-none") {
+            ctx.clearRect(0, 0, width, height);
+            return;
+        }
+
+        // --- FX Mode 1: Matrix Rain ---
+        if (currentFx === "fx-matrix") {
+            const katakana = "アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン0123456789ABCDEF";
+            const fontSize = 14;
+            const columns = Math.floor(width / fontSize);
+            const rainDrops = Array(columns).fill(1);
+
+            function drawMatrix() {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+                ctx.fillRect(0, 0, width, height);
+                ctx.fillStyle = customColors ? customColors.accent : "#10b981";
+                ctx.font = fontSize + "px monospace";
+
+                for (let i = 0; i < rainDrops.length; i++) {
+                    const text = katakana.charAt(Math.floor(Math.random() * katakana.length));
+                    ctx.fillText(text, i * fontSize, rainDrops[i] * fontSize);
+
+                    if (rainDrops[i] * fontSize > height && Math.random() > 0.975) {
+                        rainDrops[i] = 0;
+                    }
+                    rainDrops[i]++;
+                }
+                animFrameId = requestAnimationFrame(drawMatrix);
+            }
+            drawMatrix();
+        }
+
+        // --- FX Mode 2: Starfield ---
+        else if (currentFx === "fx-stars") {
+            const stars = Array.from({ length: 150 }, () => ({
+                x: Math.random() * width - width / 2,
+                y: Math.random() * height - height / 2,
+                z: Math.random() * width
+            }));
+
+            function drawStars() {
+                ctx.fillStyle = "rgba(11, 15, 25, 0.2)";
+                ctx.fillRect(0, 0, width, height);
+
+                const cx = width / 2;
+                const cy = height / 2;
+
+                stars.forEach(star => {
+                    star.z -= 2;
+                    if (star.z <= 0) star.z = width;
+
+                    const k = 128 / star.z;
+                    const px = star.x * k + cx;
+                    const py = star.y * k + cy;
+
+                    if (px >= 0 && px < width && py >= 0 && py < height) {
+                        const size = (1 - star.z / width) * 2.5;
+                        ctx.fillStyle = customColors ? customColors.accent : "#818cf8";
+                        ctx.beginPath();
+                        ctx.arc(px, py, size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                });
+                animFrameId = requestAnimationFrame(drawStars);
+            }
+            drawStars();
+        }
+
+        // --- FX Mode 3: Fireflies / Sparkles ---
+        else if (currentFx === "fx-sparkles") {
+            const flies = Array.from({ length: 50 }, () => ({
+                x: Math.random() * width,
+                y: Math.random() * height,
+                r: Math.random() * 3 + 1,
+                dx: (Math.random() - 0.5) * 1.5,
+                dy: (Math.random() - 0.5) * 1.5,
+                alpha: Math.random()
+            }));
+
+            function drawFireflies() {
+                ctx.clearRect(0, 0, width, height);
+
+                flies.forEach(f => {
+                    f.x += f.dx;
+                    f.y += f.dy;
+                    f.alpha += (Math.random() - 0.5) * 0.05;
+
+                    if (f.x < 0 || f.x > width) f.dx *= -1;
+                    if (f.y < 0 || f.y > height) f.dy *= -1;
+                    if (f.alpha < 0.2) f.alpha = 0.2;
+                    if (f.alpha > 0.9) f.alpha = 0.9;
+
+                    ctx.fillStyle = customColors ? customColors.accent : "#38bdf8";
+                    ctx.globalAlpha = f.alpha;
+                    ctx.beginPath();
+                    ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                ctx.globalAlpha = 1.0;
+                animFrameId = requestAnimationFrame(drawFireflies);
+            }
+            drawFireflies();
+        }
+
+        // --- FX Mode 4: Constellation ---
+        else if (currentFx === "fx-constellation") {
+            const nodes = Array.from({ length: 65 }, () => ({
+                x: Math.random() * width,
+                y: Math.random() * height,
+                vx: (Math.random() - 0.5) * 1.2,
+                vy: (Math.random() - 0.5) * 1.2
+            }));
+
+            function drawConstellation() {
+                ctx.clearRect(0, 0, width, height);
+                const color = customColors ? customColors.accent : "#6366f1";
+
+                nodes.forEach((n, idx) => {
+                    n.x += n.vx;
+                    n.y += n.vy;
+                    if (n.x < 0 || n.x > width) n.vx *= -1;
+                    if (n.y < 0 || n.y > height) n.vy *= -1;
+
+                    ctx.fillStyle = color;
+                    ctx.beginPath();
+                    ctx.arc(n.x, n.y, 2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    for (let j = idx + 1; j < nodes.length; j++) {
+                        const n2 = nodes[j];
+                        const dist = Math.hypot(n.x - n2.x, n.y - n2.y);
+                        if (dist < 110) {
+                            ctx.strokeStyle = color;
+                            ctx.globalAlpha = (1 - dist / 110) * 0.3;
+                            ctx.beginPath();
+                            ctx.moveTo(n.x, n.y);
+                            ctx.lineTo(n2.x, n2.y);
+                            ctx.stroke();
+                        }
+                    }
+                });
+                ctx.globalAlpha = 1.0;
+                animFrameId = requestAnimationFrame(drawConstellation);
+            }
+            drawConstellation();
+        }
+
+        // --- FX Mode 5: Snowfall ---
+        else if (currentFx === "fx-snow") {
+            const flakes = Array.from({ length: 80 }, () => ({
+                x: Math.random() * width,
+                y: Math.random() * height,
+                r: Math.random() * 3 + 1,
+                vy: Math.random() * 1.5 + 0.5
+            }));
+
+            function drawSnow() {
+                ctx.clearRect(0, 0, width, height);
+                ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+
+                flakes.forEach(f => {
+                    f.y += f.vy;
+                    if (f.y > height) f.y = -10;
+                    ctx.beginPath();
+                    ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                animFrameId = requestAnimationFrame(drawSnow);
+            }
+            drawSnow();
+        }
+    }
+
+    // --- Dynamic Color Injection Engine ---
+    function applyColorEngine() {
+        let styleTag = document.getElementById("remnabot-custom-theme-style");
+        if (!styleTag) {
+            styleTag = document.createElement("style");
+            styleTag.id = "remnabot-custom-theme-style";
+            document.head.appendChild(styleTag);
+        }
+
+        let pObj = presets.find(p => p.id === currentPreset) || presets[0];
+        let accent = customColors ? customColors.accent : pObj.accent;
+        let bg = customColors ? customColors.bg : pObj.bg;
+        let card = customColors ? customColors.card : pObj.card;
+        let text = customColors ? customColors.text : pObj.text;
+
+        styleTag.innerHTML = `
+            body, html, #app, #root {
+                background-color: ${bg} !important;
+                color: ${text} !important;
+            }
+            aside, nav, [class*="card"], [class*="panel"], [class*="drawer"], [class*="bg-slate"], [class*="bg-zinc"], [class*="bg-gray"], [class*="bg-dark"] {
+                background-color: ${card} !important;
+                border-color: ${accent}35 !important;
+            }
+            [aria-current="page"], [class*="active"]:not(#remnabot-overlay-bar *):not(#remna-custom-modal *) {
+                background: ${accent} !important;
+                color: #ffffff !important;
+                border-color: ${accent} !important;
+            }
+            .remna-sidebar-link {
+                border-color: ${accent}60 !important;
+            }
+        `;
     }
 
     function showToast(msg) {
@@ -117,27 +348,47 @@
     }
 
     window.RemnaOverlay = {
-        setTheme: function(themeId) {
-            currentTheme = themeId;
-            localStorage.setItem("remnabot_theme", themeId);
-            applyCurrentTheme();
+        setPreset: function(presetId) {
+            currentPreset = presetId;
+            customColors = null;
+            localStorage.setItem("remnabot_preset", presetId);
+            localStorage.removeItem("remnabot_custom_colors");
+            applyColorEngine();
+            initCanvasFx();
 
-            const tObj = themes.find(t => t.id === themeId);
-            showToast(`🎨 Тема оформления: ${tObj ? tObj.name : themeId}`);
-
-            document.querySelectorAll(".theme-card").forEach(c => {
-                if (c.getAttribute("data-theme") === themeId) {
-                    c.classList.add("active");
-                } else {
-                    c.classList.remove("active");
-                }
-            });
+            const pObj = presets.find(p => p.id === presetId);
+            showToast(`🎨 Пресет темы: ${pObj ? pObj.name : presetId}`);
+            if (document.getElementById("remna-custom-modal")) this.openControlCenter("themes");
         },
 
-        cycleTheme: function() {
-            const idx = themes.findIndex(t => t.id === currentTheme);
-            const nextIdx = (idx + 1) % themes.length;
-            this.setTheme(themes[nextIdx].id);
+        setFx: function(fxId) {
+            currentFx = fxId;
+            localStorage.setItem("remnabot_fx", fxId);
+            initCanvasFx();
+
+            const fObj = fxList.find(f => f.id === fxId);
+            showToast(`✨ Анимированный фон: ${fObj ? fObj.name : fxId}`);
+            if (document.getElementById("remna-custom-modal")) this.openControlCenter("themes");
+        },
+
+        updateCustomColor: function(key, hexVal) {
+            let pObj = presets.find(p => p.id === currentPreset) || presets[0];
+            if (!customColors) {
+                customColors = { accent: pObj.accent, bg: pObj.bg, card: pObj.card, text: pObj.text };
+            }
+            customColors[key] = hexVal;
+            localStorage.setItem("remnabot_custom_colors", JSON.stringify(customColors));
+            applyColorEngine();
+            initCanvasFx();
+        },
+
+        resetColors: function() {
+            customColors = null;
+            localStorage.removeItem("remnabot_custom_colors");
+            applyColorEngine();
+            initCanvasFx();
+            showToast("🔄 Все цвета сброшены к стандартным!");
+            if (document.getElementById("remna-custom-modal")) this.openControlCenter("themes");
         },
 
         toggleMinimize: function() {
@@ -160,7 +411,7 @@
                     <h3>⚡ Remna-Bot Power-Up Центр</h3>
 
                     <div class="remna-tab-nav">
-                        <button class="remna-tab-btn ${activeTab==='themes'?'active':''}" onclick="window.RemnaOverlay.switchTab('themes')">🎨 Темы и Цвета</button>
+                        <button class="remna-tab-btn ${activeTab==='themes'?'active':''}" onclick="window.RemnaOverlay.switchTab('themes')">🎨 Темы и Кастомизация</button>
                         <button class="remna-tab-btn ${activeTab==='ssh'?'active':''}" onclick="window.RemnaOverlay.switchTab('ssh')">🛡️ SSH Безопасность</button>
                         <button class="remna-tab-btn ${activeTab==='node'?'active':''}" onclick="window.RemnaOverlay.switchTab('node')">🖥️ 1-Click Ноды</button>
                         <button class="remna-tab-btn ${activeTab==='speed'?'active':''}" onclick="window.RemnaOverlay.switchTab('speed')">⚡ 10Gbit Speedtest</button>
@@ -197,18 +448,53 @@
 
         getTabHtml: function(tabName) {
             if (tabName === 'themes') {
-                let gridHtml = '<div style="font-size:13px; color:#94a3b8; margin-bottom:12px;">Выберите тему оформления всей панели Remnawave в режиме реального времени:</div><div class="theme-card-grid">';
-                themes.forEach(t => {
-                    const isActive = t.id === currentTheme ? 'active' : '';
-                    gridHtml += `
-                        <div class="theme-card ${isActive}" data-theme="${t.id}" onclick="window.RemnaOverlay.setTheme('${t.id}')">
-                            <div class="preview-circle" style="background:${t.color}; box-shadow:0 0 10px ${t.color}"></div>
-                            <div style="font-size:12px; font-weight:700;">${t.name}</div>
-                        </div>
-                    `;
+                let pObj = presets.find(p => p.id === currentPreset) || presets[0];
+                let curAccent = customColors ? customColors.accent : pObj.accent;
+                let curBg = customColors ? customColors.bg : pObj.bg;
+                let curCard = customColors ? customColors.card : pObj.card;
+                let curText = customColors ? customColors.text : pObj.text;
+
+                // 1. Background FX Selector Grid
+                let fxHtml = '<div class="section-title">✨ Анимированный фон (Bedolaga FX)</div><div class="fx-grid">';
+                fxList.forEach(f => {
+                    const isActive = f.id === currentFx ? 'active' : '';
+                    fxHtml += `<div class="fx-card ${isActive}" onclick="window.RemnaOverlay.setFx('${f.id}')">${f.name}</div>`;
                 });
-                gridHtml += '</div>';
-                return gridHtml;
+                fxHtml += '</div>';
+
+                // 2. Presets Grid
+                let presetHtml = '<div class="section-title">🎨 Быстрые пресеты</div><div class="fx-grid">';
+                presets.forEach(p => {
+                    const isActive = p.id === currentPreset && !customColors ? 'active' : '';
+                    presetHtml += `<div class="fx-card ${isActive}" onclick="window.RemnaOverlay.setPreset('${p.id}')">${p.name}</div>`;
+                });
+                presetHtml += '</div>';
+
+                // 3. Manual Custom Color Pickers (Bedolaga-Style)
+                let customHtml = `
+                    <div class="section-title">🛠️ Ручная настройка цветов (HEX)</div>
+                    <div class="color-picker-grid">
+                        <div class="color-picker-item">
+                            <label>Акцентный цвет</label>
+                            <input type="color" value="${curAccent}" onchange="window.RemnaOverlay.updateCustomColor('accent', this.value)">
+                        </div>
+                        <div class="color-picker-item">
+                            <label>Цвет фона</label>
+                            <input type="color" value="${curBg}" onchange="window.RemnaOverlay.updateCustomColor('bg', this.value)">
+                        </div>
+                        <div class="color-picker-item">
+                            <label>Цвет поверхностей</label>
+                            <input type="color" value="${curCard}" onchange="window.RemnaOverlay.updateCustomColor('card', this.value)">
+                        </div>
+                        <div class="color-picker-item">
+                            <label>Цвет текста</label>
+                            <input type="color" value="${curText}" onchange="window.RemnaOverlay.updateCustomColor('text', this.value)">
+                        </div>
+                    </div>
+                    <button class="overlay-btn" style="width:100%; margin-top:6px;" onclick="window.RemnaOverlay.resetColors()">🔄 Сбросить все цвета к стандартным</button>
+                `;
+
+                return fxHtml + presetHtml + customHtml;
             }
 
             if (tabName === 'ssh') {
@@ -422,7 +708,8 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
     };
 
     function init() {
-        applyCurrentTheme();
+        applyColorEngine();
+        initCanvasFx();
         injectOverlayBar();
         injectSidebarItem();
         setInterval(injectSidebarItem, 300);
