@@ -646,7 +646,7 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                     </div>
                     <div class="remna-form-group">
                         <label>Название Ноды:</label>
-                        <input type="text" id="nodeNameInput" class="remna-input" value="${selectedCountry.flag} ${selectedCountry.name} VLESS-Reality">
+                        <input type="text" id="nodeNameInput" class="remna-input" value="${selectedCountry.flag} ${selectedCountry.name}">
                     </div>
                     <button class="remna-btn-primary" onclick="window.RemnaOverlay.submitNodeDeploy()">🚀 Запустить 1-Click Развертывание Ноды</button>
                     <div id="nodeDeployLog" style="margin-top:12px; font-size:12px; color:#38bdf8;"></div>
@@ -724,7 +724,7 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                 isCountryPickerOpen = false;
                 const nameInput = document.getElementById("nodeNameInput");
                 if (nameInput) {
-                    nameInput.value = `${found.flag} ${found.name} VLESS-Reality`;
+                    nameInput.value = `${found.flag} ${found.name}`;
                 }
                 const body = document.getElementById("remnaTabBody");
                 if (body) body.innerHTML = this.getTabHtml('node');
