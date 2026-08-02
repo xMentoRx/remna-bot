@@ -12,6 +12,7 @@
 
     let currentTheme = localStorage.getItem("remnabot_theme") || "theme-default";
     let isMinimized = false;
+    let fetchedKeys = [];
 
     function applyCurrentTheme() {
         const allThemeClasses = themes.map(t => t.id);
@@ -56,7 +57,6 @@
 
     // --- Left Sidebar & Mobile Drawer Custom Menu Item Injection ---
     function injectSidebarItem() {
-        // Search for all navigation sections in Remnawave (both desktop sidebar & mobile drawer)
         const candidates = document.querySelectorAll("nav, aside, [class*='sidebar'], [class*='drawer'], [class*='menu']");
         for (let el of candidates) {
             if (el.innerText && (el.innerText.includes("ИНСТРУМЕНТЫ") || el.innerText.includes("УПРАВЛЕНИЕ") || el.innerText.includes("ПОДПИСКА") || el.children.length > 2)) {
@@ -74,7 +74,6 @@
                         window.RemnaOverlay.openControlCenter("themes");
                     };
 
-                    // Insert before social icons or at end of nav list
                     const socialRow = el.querySelector("[class*='social'], .flex.gap-2");
                     if (socialRow) {
                         el.insertBefore(item, socialRow);
@@ -176,7 +175,9 @@
             overlay.innerHTML = contentHtml;
             document.body.appendChild(overlay);
 
-            if (activeTab === 'speed') {
+            if (activeTab === 'ssh') {
+                this.loadSshKeys();
+            } else if (activeTab === 'speed') {
                 this.startSpeedtestAnimation();
             }
         },
@@ -187,7 +188,9 @@
             const body = document.getElementById("remnaTabBody");
             if (body) body.innerHTML = this.getTabHtml(tabName);
 
-            if (tabName === 'speed') {
+            if (tabName === 'ssh') {
+                this.loadSshKeys();
+            } else if (tabName === 'speed') {
                 this.startSpeedtestAnimation();
             }
         },
@@ -209,18 +212,37 @@
             }
 
             if (tabName === 'ssh') {
-                return `
-                    <div style="font-size:13px; color:#cbd5e1; margin-bottom:14px;">
-                        🔒 <b>Статус безопасности VPS:</b> SSH Порт <b>5422</b> (Защищен от брутфорса)<br>
-                        🔑 Вход по паролю: <b>Отключен (PasswordAuthentication no)</b><br>
-                        🥊 Фильтр брутфорсеров: <b>Fail2ban Active</b>
-                    </div>
-                    <div class="remna-form-group">
-                        <label>Сгенерированный приватный ключ Ed25519 (.pem):</label>
-                        <textarea style="width:100%; height:90px; font-size:11px; font-family:monospace; background:#000; color:#10b981; border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:8px;" readonly>-----BEGIN OPENSSH PRIVATE KEY-----
+                const sampleKey = `-----BEGIN OPENSSH PRIVATE KEY-----
 b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZWQyNTUx
 OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
------END OPENSSH PRIVATE KEY-----</textarea>
+-----END OPENSSH PRIVATE KEY-----`;
+                const host = location.hostname;
+                const defaultCmd = `ssh -i "C:\\Users\\username\\.ssh\\remnabot.pem" root@${host} -p 5422`;
+
+                return `
+                    <div style="font-size:12px; color:#cbd5e1; margin-bottom:14px; background:rgba(255,255,255,0.04); padding:12px; border-radius:14px; border:1px solid rgba(255,255,255,0.1);">
+                        🔒 <b>Статус защиты VPS:</b> SSH Порт <span style="color:#10b981; font-weight:800;">5422</span> (Харденинг активен)<br>
+                        🔑 Вход по паролю: <span style="color:#ef4444; font-weight:700;">Отключен (PasswordAuthentication no)</span><br>
+                        🛡️ Фильтр брутфорса: <span style="color:#10b981; font-weight:700;">Fail2ban Active</span>
+                    </div>
+
+                    <div class="remna-form-group">
+                        <label>🔑 Приватный SSH-ключ Ed25519 (.pem):</label>
+                        <textarea id="pemKeyBox" style="width:100%; height:85px; font-size:11px; font-family:monospace; background:#000; color:#10b981; border:1px solid rgba(16,185,129,0.3); border-radius:12px; padding:10px; cursor:pointer;" readonly onclick="window.RemnaOverlay.copyKeyToClipboard()" title="Нажмите, чтобы скопировать ключ">${sampleKey}</textarea>
+                        <div style="display:flex; gap:8px; margin-top:8px;">
+                            <button class="overlay-btn" style="flex:1; background:rgba(16,185,129,0.2); border-color:rgba(16,185,129,0.5);" onclick="window.RemnaOverlay.copyKeyToClipboard()">📋 Скопировать Ключ</button>
+                            <button class="overlay-btn" style="flex:1; background:rgba(99,102,241,0.2); border-color:rgba(129,140,248,0.5);" onclick="window.RemnaOverlay.downloadPemKey()">💾 Скачать .pem Ключ</button>
+                        </div>
+                    </div>
+
+                    <div class="remna-form-group" style="margin-top:16px; background:rgba(15,23,42,0.6); padding:14px; border-radius:14px; border:1px solid rgba(255,255,255,0.1);">
+                        <label style="color:#38bdf8; font-weight:700;">⚡ Быстрое подключение из терминала (Windows / Linux / Mac):</label>
+                        <div style="font-size:11px; color:#94a3b8; margin-bottom:6px;">Укажите путь сохранения файла ключа <b>remnabot.pem</b>:</div>
+                        <input type="text" id="sshPathInput" class="remna-input" value="C:\\Users\\username\\.ssh\\remnabot.pem" oninput="window.RemnaOverlay.updateSshCmd()" style="font-family:monospace; font-size:11px; margin-bottom:10px;">
+
+                        <div style="font-size:11px; color:#94a3b8; margin-bottom:4px;">Сгенерированная команда подключения SSH:</div>
+                        <input type="text" id="sshCmdBox" class="remna-input" value="${defaultCmd}" readonly style="font-family:monospace; font-size:11px; color:#38bdf8; background:#000; margin-bottom:8px;">
+                        <button class="remna-btn-primary" style="padding:10px; font-size:13px;" onclick="window.RemnaOverlay.copySshCmd()">📋 Скопировать Команду SSH</button>
                     </div>
                 `;
             }
@@ -267,6 +289,68 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                 `;
             }
             return '';
+        },
+
+        loadSshKeys: function() {
+            fetch('/api/security/keys')
+                .then(r => r.json())
+                .then(data => {
+                    const keys = data.keys || [];
+                    if (keys.length > 0 && keys[0].private_key) {
+                        const box = document.getElementById("pemKeyBox");
+                        if (box) box.value = keys[0].private_key;
+                        this.updateSshCmd();
+                    }
+                })
+                .catch(() => {
+                    this.updateSshCmd();
+                });
+        },
+
+        copyKeyToClipboard: function() {
+            const box = document.getElementById("pemKeyBox");
+            if (!box) return;
+            navigator.clipboard.writeText(box.value).then(() => {
+                showToast("✅ Приватный SSH-ключ скопирован в буфер обмена!");
+            }).catch(() => {
+                box.select();
+                showToast("📋 Ключ выделен!");
+            });
+        },
+
+        downloadPemKey: function() {
+            const box = document.getElementById("pemKeyBox");
+            if (!box) return;
+            const blob = new Blob([box.value], { type: "application/x-pem-file" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "id_ed25519_remnabot.pem";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast("💾 Файл id_ed25519_remnabot.pem скачан!");
+        },
+
+        updateSshCmd: function() {
+            const input = document.getElementById("sshPathInput");
+            const path = input ? input.value.trim() : "C:\\Users\\username\\.ssh\\remnabot.pem";
+            const host = location.hostname || "177.1.202.124";
+            const cmd = `ssh -i "${path}" root@${host} -p 5422`;
+            const cmdBox = document.getElementById("sshCmdBox");
+            if (cmdBox) cmdBox.value = cmd;
+        },
+
+        copySshCmd: function() {
+            const cmdBox = document.getElementById("sshCmdBox");
+            if (!cmdBox) return;
+            navigator.clipboard.writeText(cmdBox.value).then(() => {
+                showToast("✅ Команда быстрой авторизации SSH скопирована!");
+            }).catch(() => {
+                cmdBox.select();
+                showToast("📋 Команда выделена!");
+            });
         },
 
         submitNodeDeploy: function() {
@@ -341,7 +425,6 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
         applyCurrentTheme();
         injectOverlayBar();
         injectSidebarItem();
-        // Continuously check for dynamic SPA sidebar / mobile drawer mounts
         setInterval(injectSidebarItem, 300);
     }
 

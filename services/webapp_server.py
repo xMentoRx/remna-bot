@@ -183,11 +183,12 @@ async def api_ssh_harden_handler(request: web.Request) -> web.Response:
 
 async def api_ssh_keys_handler(request: web.Request) -> web.Response:
     host = request.query.get("host", "")
-    from services.ssh_hardening import get_stored_key
+    from services.ssh_hardening import get_stored_key, get_all_stored_keys
     if host:
         key_info = get_stored_key(host)
-        return web.json_response({"key": key_info})
-    return web.json_response({"key": None})
+        return web.json_response({"key": key_info, "keys": [key_info] if key_info else []})
+    all_keys = get_all_stored_keys()
+    return web.json_response({"keys": all_keys})
 
 async def api_get_settings_handler(request: web.Request) -> web.Response:
     settings = load_settings()

@@ -69,6 +69,17 @@ def get_stored_key(host: str) -> Optional[Dict[str, Any]]:
             pass
     return None
 
+def get_all_stored_keys() -> List[Dict[str, Any]]:
+    """Returns a list of all stored SSH key entries."""
+    if os.path.exists(KEYS_FILE):
+        try:
+            with open(KEYS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return list(data.values())
+        except Exception:
+            pass
+    return []
+
 def run_ssh_hardening(
     host: str,
     password: str,
