@@ -198,24 +198,6 @@ class RemnawaveAPIAdapter:
                     { "type": "field", "protocol": ["bittorrent"], "outboundTag": "BLOCK" }
                 ]
             }
-                    "streamSettings": {
-                        "network": "tcp",
-                        "security": "reality",
-                        "realitySettings": {
-                            "show": False,
-                            "dest": "/dev/shm/nginx.sock",
-                            "xver": 1,
-                            "serverNames": [domain],
-                            "privateKey": priv_key,
-                            "shortIds": [short_id]
-                        }
-                    }
-                }
-            ],
-            "outbounds": [
-                {"protocol": "freedom", "tag": "direct"},
-                {"protocol": "blackhole", "tag": "block"}
-            ]
         }
 
         prof_payloads = [
