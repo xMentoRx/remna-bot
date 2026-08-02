@@ -191,6 +191,8 @@ services:
     environment:
       SECRET_KEY: "{node_secret}"
       PANEL_URL: "{panel_url}"
+      REMNAWAVE_SECRET_KEY: "{node_secret}"
+      REMNAWAVE_PANEL_URL: "{panel_url}"
 """
             with sftp.file("/opt/remnawave-node/docker-compose.yml", "w") as f:
                 f.write(node_compose)

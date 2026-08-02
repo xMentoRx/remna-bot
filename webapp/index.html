@@ -192,6 +192,48 @@
                 </div>
 
                 <div class="section-card glass mt-3">
+                    <h3>📢 Настройка Админ-Чата & Форум-Топиков Алертов</h3>
+                    <p class="subtitle">Пошаговая инструкция интеграции мониторинга с вашей Супергруппой Telegram:</p>
+                    
+                    <div class="stepper-guide mt-2" style="font-size: 0.85rem; opacity: 0.9; line-height: 1.5;">
+                        <p>1️⃣ **Создайте Супергруппу** в Telegram и включите в её настройках <code>«Темы» (Topics / Forums)</code>.</p>
+                        <p>2️⃣ **Добавьте Вашего Бота** в группу и дайте права <code>Администратора</code> (Отправка сообщений, Управление темами).</p>
+                        <p>3️⃣ **Создайте 3 Темы (Topics)**:</p>
+                        <ul style="padding-left: 20px; margin: 4px 0;">
+                            <li>🟢 **Топик #1**: <em>Мониторинг Нод</em> (ID топика, напр. <code>2</code>)</li>
+                            <li>🚨 **Топик #2**: <em>Алерты Слива Подписок (HWID)</em> (ID топика, напр. <code>3</code>)</li>
+                            <li>💾 **Топик #3**: <em>Ежедневные Бэкапы БД</em> (ID топика, напр. <code>4</code>)</li>
+                        </ul>
+                    </div>
+
+                    <div class="input-group mt-3">
+                        <label>ID Супергруппы (ALERT_CHAT_ID):</label>
+                        <input type="text" id="cfgAlertChatId" placeholder="-1001234567890">
+                    </div>
+
+                    <div class="input-group mt-2">
+                        <label>ID Топика Мониторинга Нод (ALERT_TOPIC_ID):</label>
+                        <input type="number" id="cfgAlertTopicId" placeholder="2">
+                    </div>
+
+                    <div class="input-group mt-2">
+                        <label>ID Топика Слива Подписок (SHARING_ALERT_TOPIC_ID):</label>
+                        <input type="number" id="cfgSharingTopicId" placeholder="3">
+                    </div>
+
+                    <div class="input-group mt-2">
+                        <label>ID Топика Бэкапов Базы Данных (BACKUP_ALERT_TOPIC_ID):</label>
+                        <input type="number" id="cfgBackupTopicId" placeholder="4">
+                    </div>
+
+                    <div class="btn-group mt-3">
+                        <button class="action-btn primary" onclick="saveAlertSettings()">💾 Сохранить Настройки Админ-Чата</button>
+                        <button class="action-btn secondary" onclick="testAlertsConnection()">🧪 Проверить Связь (Отправить Алерты)</button>
+                        <button class="action-btn success mt-2" onclick="triggerManualBackup()">💾 Создать Бэкап БД Прямо Сейчас</button>
+                    </div>
+                </div>
+
+                <div class="section-card glass mt-3">
                     <h3>🎛️ Ручные Цвета (Палитра & HEX-коды)</h3>
                     <p class="subtitle">Вводите HEX-коды из нейросети или выбирайте в палитре:</p>
 

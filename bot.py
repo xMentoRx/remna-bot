@@ -12,7 +12,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from config import BOT_TOKEN
 from handlers import setup_routers
 from services.webapp_server import start_webapp_server
-from services.monitoring import node_monitoring_loop
+from services.monitoring import node_monitoring_loop, daily_backup_loop
 
 logger = logging.getLogger("remna-bot.main")
 
@@ -21,7 +21,7 @@ async def main():
         logger.error("❌ BOT_TOKEN is missing! Please set it in .env file.")
         return
 
-    logger.info("🚀 Starting Remna-Bot (Aiogram 3 + MiniApp REST Server + Node Monitoring)...")
+    logger.info("🚀 Starting Remna-Bot (Aiogram 3 + MiniApp REST Server + Security & Backup Monitoring)...")
 
     # Initialize Aiogram Bot and Dispatcher
     bot = Bot(token=BOT_TOKEN)
@@ -35,6 +35,9 @@ async def main():
 
     # 2. Start Node Monitoring Loop in background
     asyncio.create_task(node_monitoring_loop(bot))
+
+    # 3. Start Daily PostgreSQL Backup Loop in background
+    asyncio.create_task(daily_backup_loop(bot))
 
     # 3. Start Telegram Bot Polling
     logger.info("🤖 Telegram Bot polling started. Press Ctrl+C to stop.")

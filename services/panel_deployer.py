@@ -89,12 +89,12 @@ def run_panel_ssh_install(
         if ip_panel != host:
             return {
                 "success": False,
-                "error": f"Ошибка DNS: Домен `{panel_domain}` указывает на `{ip_panel}`, а не на IP вашего VPS `{host}`. Проверьте A-записи в Cloudflare!"
+                "error": f"Ошибка DNS: Домен `{panel_domain}` указывает на `{ip_panel}`, а не на IP вашего VPS `{host}`. Если вы используете Cloudflare, временно отключите проксирование (поставьте 'Серые облака' / DNS Only), чтобы Caddy мог выпустить SSL!"
             }
     except Exception:
         return {
             "success": False,
-            "error": f"Ошибка DNS: Не удалось распознать IP домена `{panel_domain}`. Убедитесь, что создали A-запись на IP `{host}`!"
+            "error": f"Ошибка DNS: Не удалось распознать IP домена `{panel_domain}`. Убедитесь, что создали A-запись на IP `{host}` и подождите 1-2 минуты для обновления DNS!"
         }
 
     if not admin_password:
@@ -190,6 +190,8 @@ services:
       - "127.0.0.1:3000:3000"
     environment:
       DATABASE_URL: "postgresql://remnawave:{db_password}@postgres:5432/remnawave?sslmode=disable"
+      APP_SECRET: "{jwt_secret}"
+      JWT_AUTH_SECRET: "{jwt_secret}"
       JWT_SECRET: "{jwt_secret}"
       COOKIE_SECRET: "{cookie_secret}"
       PORT: "3000"
@@ -286,5 +288,45 @@ async def deploy_fresh_panel_async(
             progress_cb=progress_cb
         )
     )
+def run_panel_backup(host: str, password: str, port: int = 22) -> Dict[str, Any]:
+    """Performs PostgreSQL database backup of Remnawave Panel via SSH."""
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    try:
+        client.connect(hostname=host, port=port, username="root", password=password, timeout=15)
+        backup_filename = f"remnawave_backup_{int(time.time())}.sql.gz"
+        backup_remote_path = f"/tmp/{backup_filename}"
+        
+        cmd = f"docker exec remnawave-db pg_dump -U remnawave remnawave | gzip > {backup_remote_path}"
+        stdin, stdout, stderr = client.exec_command(cmd)
+        exit_code = stdout.channel.recv_exit_status()
+        
+        if exit_code == 0:
+            local_backup_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "backups")
+            os.makedirs(local_backup_dir, exist_ok=True)
+            local_path = os.path.join(local_backup_dir, backup_filename)
+            
+            sftp = client.open_sftp()
+            sftp.get(backup_remote_path, local_path)
+            sftp.remove(backup_remote_path)
+            sftp.close()
+            
+            return {
+                "success": True,
+                "local_path": local_path,
+                "filename": backup_filename,
+                "message": f"💾 Бэкап базы данных успешно создан: `{backup_filename}`"
+            }
+        else:
+            return {"success": False, "error": "Не удалось создать дампы PostgreSQL через Docker exec"}
+    except Exception as e:
+        logger.error(f"Panel backup error on {host}: {e}")
+        return {"success": False, "error": str(e)}
+    finally:
+        client.close()
+
+async def backup_panel_database_async(host: str, password: str, port: int = 22) -> Dict[str, Any]:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, run_panel_backup, host, password, port)
 
 

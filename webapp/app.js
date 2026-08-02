@@ -307,35 +307,69 @@ async function loadDashboardStats() {
 
 async function loadNodesList() {
     const container = document.getElementById('nodesListContainer');
-    container.innerHTML = '<div class="loading-spinner">Загрузка нод...</div>';
+    container.innerHTML = '<div class="loading-spinner">Загрузка нод и балансировщика...</div>';
     try {
-        const res = await fetch('/api/hosts');
-        const data = await res.json();
-        const hosts = data.hosts || [];
+        const [resHosts, resBal] = await Promise.all([
+            fetch('/api/hosts'),
+            fetch('/api/balancer/status')
+        ]);
+
+        const dataHosts = await resHosts.json();
+        const dataBal = await resBal.json();
+
+        const hosts = dataHosts.hosts || [];
+        const activeUuids = new Set(dataBal.active_uuids || []);
+        const virtualHost = dataBal.virtual_host;
+
+        container.innerHTML = '';
+
+        // 1. Balancer Status Banner Card
+        const balCard = document.createElement('div');
+        balCard.className = 'section-card glass mb-3';
+        balCard.style.borderLeft = '4px solid var(--accent-color)';
+        balCard.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h4 style="margin: 0; display: flex; align-items: center; gap: 6px;">
+                        ⚖️ Клиентский Балансировщик ("🇪🇺 Автовыбор")
+                    </h4>
+                    <p style="margin: 4px 0 0 0; font-size: 0.85rem; opacity: 0.8;">
+                        Активных нод в автовыборе: <strong>${activeUuids.size}</strong> | 
+                        Виртуальный хост: ${virtualHost ? '🟢 Создан' : '⚪ Не инициализирован'}
+                    </p>
+                </div>
+                <button class="btn-sm primary" onclick="setupBalancerApp()">⚙️ Настроить</button>
+            </div>
+        `;
+        container.appendChild(balCard);
 
         if (hosts.length === 0) {
-            container.innerHTML = '<div class="empty-state">Ноды не найдены. Разверните первую ноду!</div>';
+            container.innerHTML += '<div class="empty-state">Ноды не найдены. Разверните первую ноду!</div>';
             return;
         }
 
-        container.innerHTML = '';
         hosts.forEach(h => {
+            const uuidVal = String(h.uuid || h.id || '');
             const isOnline = h.status === 'ONLINE' || h.isOnline === true || h.isDisabled === false;
             const countryCode = (h.name || '').substring(0, 2);
             const flag = getCountryFlag(countryCode);
             const ip = h.address || '--';
+            const isInBal = activeUuids.has(uuidVal);
 
             const card = document.createElement('div');
-            card.className = 'node-card glass';
+            card.className = 'node-card glass mb-2';
             card.innerHTML = `
                 <div class="node-info">
-                    <h4>${flag} ${h.name || 'Node'}</h4>
+                    <h4>${flag} ${h.name || 'Node'} ${isInBal ? '<span class="status-badge" style="background: rgba(99, 102, 241, 0.2); color: #818cf8;">⚖️ В Балансировщике</span>' : ''}</h4>
                     <p>IP: <code>${ip}</code> | Порт: ${h.port || 443}</p>
                 </div>
-                <div class="node-status" style="display: flex; gap: 8px; align-items: center;">
+                <div class="node-status" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                     <span class="status-badge ${isOnline ? 'online' : 'offline'}">
                         ${isOnline ? '🟢 ONLINE' : '🔴 OFFLINE'}
                     </span>
+                    <button class="btn-sm ${isInBal ? 'secondary' : 'primary'}" onclick="toggleNodeInBalancer('${uuidVal}')">
+                        ${isInBal ? '⚖️ Исключить' : '⚖️ В Балансировщик'}
+                    </button>
                     <button class="btn-sm secondary" onclick="hardenSpecificNode('${ip}')">🛡️ Защитить</button>
                 </div>
             `;
@@ -343,6 +377,46 @@ async function loadNodesList() {
         });
     } catch (e) {
         container.innerHTML = '<div class="empty-state">Ошибка загрузки списка нод</div>';
+    }
+}
+
+async function toggleNodeInBalancer(hostUuid) {
+    try {
+        showToast("⏳ Обновление балансировщика...");
+        const res = await fetch('/api/balancer/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uuid: hostUuid })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(`✅ ${data.message}`);
+            loadNodesList();
+        } else {
+            showToast(`❌ Ошибка: ${data.error || 'Сбой'}`);
+        }
+    } catch (e) {
+        showToast("❌ Ошибка соединения");
+    }
+}
+
+async function setupBalancerApp() {
+    try {
+        showToast("⏳ Инициализация Виртуального Хоста '🇪🇺 Автовыбор'...");
+        const res = await fetch('/api/balancer/setup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ flag: '🇪🇺', name: 'Автовыбор' })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast("🎉 Балансировщик '🇪🇺 Автовыбор' готов к работе!");
+            loadNodesList();
+        } else {
+            showToast(`❌ Ошибка: ${data.error || 'Сбой'}`);
+        }
+    } catch (e) {
+        showToast("❌ Ошибка соединения");
     }
 }
 
@@ -700,9 +774,97 @@ async function downloadKeyVaultPemFile() {
     showToast('💾 Файл ключа скачан!', 'success');
 }
 
+async function loadAlertSettings() {
+    try {
+        const res = await fetch('/api/settings');
+        const data = await res.json();
+        if (data.status === 'success' && data.settings) {
+            const s = data.settings;
+            if (document.getElementById('cfgAlertChatId')) {
+                document.getElementById('cfgAlertChatId').value = s.alert_chat_id || '';
+            }
+            if (document.getElementById('cfgAlertTopicId')) {
+                document.getElementById('cfgAlertTopicId').value = s.alert_topic_id || '';
+            }
+            if (document.getElementById('cfgSharingTopicId')) {
+                document.getElementById('cfgSharingTopicId').value = s.sharing_alert_topic_id || '';
+            }
+            if (document.getElementById('cfgBackupTopicId')) {
+                document.getElementById('cfgBackupTopicId').value = s.backup_alert_topic_id || '';
+            }
+        }
+    } catch (e) {
+        console.error("Alert settings load error:", e);
+    }
+}
+
+async function saveAlertSettings() {
+    const alert_chat_id = document.getElementById('cfgAlertChatId').value.trim();
+    const alert_topic_id = document.getElementById('cfgAlertTopicId').value.trim();
+    const sharing_alert_topic_id = document.getElementById('cfgSharingTopicId').value.trim();
+    const backup_alert_topic_id = document.getElementById('cfgBackupTopicId').value.trim();
+
+    try {
+        showToast('⏳ Сохранение настроек админ-чата...');
+        const res = await fetch('/api/settings/alerts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                alert_chat_id,
+                alert_topic_id,
+                sharing_alert_topic_id,
+                backup_alert_topic_id
+            })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast('🎉 Настройки админ-чата успешно сохранены!', 'success');
+        } else {
+            showToast(`❌ Ошибка: ${data.message}`, 'error');
+        }
+    } catch (e) {
+        showToast('❌ Ошибка сети', 'error');
+    }
+}
+
+async function testAlertsConnection() {
+    try {
+        showToast('🧪 Отправка тестовых сообщений в админ-чат...');
+        const res = await fetch('/api/settings/alerts/test', {
+            method: 'POST'
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast('✅ Тестовые сообщения успешно отправлены в админ-чат!', 'success');
+        } else {
+            showToast(`❌ ${data.message}`, 'error');
+        }
+    } catch (e) {
+        showToast('❌ Ошибка отправки тестового алерта', 'error');
+    }
+}
+
+async function triggerManualBackup() {
+    try {
+        showToast('💾 Создание бэкапа базы данных PostgreSQL...');
+        const res = await fetch('/api/system/backup', {
+            method: 'POST'
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast(`🎉 ${data.message}`, 'success');
+        } else {
+            showToast(`❌ ${data.message}`, 'error');
+        }
+    } catch (e) {
+        showToast('❌ Ошибка создания бэкапа', 'error');
+    }
+}
+
 // Initial Load
 document.addEventListener('DOMContentLoaded', () => {
     loadSavedTheme();
     loadDashboardStats();
+    loadAlertSettings();
 });
 
