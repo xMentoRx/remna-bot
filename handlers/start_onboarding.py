@@ -29,7 +29,8 @@ def is_admin(user_id: int) -> bool:
 def get_mini_app_keyboard(webapp_url: str = ""):
     kb = []
     if webapp_url and webapp_url.startswith("https://"):
-        kb.append([InlineKeyboardButton(text="📱 Открыть Remna-Bot MiniApp", web_app=WebAppInfo(url=webapp_url))])
+        embed_url = f"{webapp_url.rstrip('/')}/remna_embed"
+        kb.append([InlineKeyboardButton(text="📱 Открыть Remna-Bot MiniApp", web_app=WebAppInfo(url=embed_url))])
         kb.append([InlineKeyboardButton(text="⚙️ Подключить другую панель", callback_data="btn_connect_panel")])
     else:
         kb.append([InlineKeyboardButton(text="🚀 1-Click Деплой Свежей Панели", callback_data="btn_deploy_panel_wiz")])

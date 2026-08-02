@@ -230,9 +230,32 @@ volumes:
         with sftp.file("/opt/remnawave/docker-compose.yml", "w") as f:
             f.write(compose_content)
 
-        # 7. Configure Caddyfile
+        # 7. Configure Caddyfile with /remna_embed proxy routing to remna-bot (port 8080)
         caddyfile_content = f"""{panel_domain} {{
-    reverse_proxy 127.0.0.1:3000
+    handle /remna_embed* {{
+        reverse_proxy 127.0.0.1:8080
+    }}
+    handle /remnabot_overlay* {{
+        reverse_proxy 127.0.0.1:8080
+    }}
+    handle /api/stats* {{
+        reverse_proxy 127.0.0.1:8080
+    }}
+    handle /api/hosts* {{
+        reverse_proxy 127.0.0.1:8080
+    }}
+    handle /api/balancer* {{
+        reverse_proxy 127.0.0.1:8080
+    }}
+    handle /api/settings* {{
+        reverse_proxy 127.0.0.1:8080
+    }}
+    handle /api/deploy* {{
+        reverse_proxy 127.0.0.1:8080
+    }}
+    handle {{
+        reverse_proxy 127.0.0.1:3000
+    }}
 }}
 
 {sub_domain} {{
