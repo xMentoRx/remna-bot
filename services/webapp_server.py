@@ -308,30 +308,35 @@ async def remna_embed_handler(request: web.Request) -> web.Response:
         webapp_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "webapp")
         return web.FileResponse(os.path.join(webapp_dir, "index.html"))
 
-    try:
-        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-            async with session.get(target_url, timeout=10) as resp:
-                if resp.status == 200:
-                    html_content = await resp.text()
-                    
-                    # Inject Remna-Bot Overlay CSS & JS into official Remnawave UI <head>
-                    base_url = target_url.rstrip("/") + "/"
-                    injection = f"""
-                    <base href="{base_url}">
-                    <link rel="stylesheet" href="/remnabot_overlay.css">
-                    <script src="/remnabot_overlay.js" defer></script>
-                    </head>
-                    """
-                    if "</head>" in html_content:
-                        html_content = html_content.replace("</head>", injection, 1)
+    urls_to_try = [target_url, "http://127.0.0.1:3000", "http://host.docker.internal:3000"]
+    html_content = None
 
-                    return web.Response(
-                        text=html_content,
-                        content_type="text/html",
-                        headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
-                    )
-    except Exception as e:
-        logger.error(f"Failed to proxy Remnawave UI from {target_url}: {e}")
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+        for url in urls_to_try:
+            try:
+                async with session.get(url, timeout=4) as resp:
+                    if resp.status == 200:
+                        html_content = await resp.text()
+                        break
+            except Exception as err:
+                logger.warning(f"remna_embed: could not fetch UI from {url}: {err}")
+
+    if html_content:
+        base_url = target_url.rstrip("/") + "/"
+        injection = f"""
+        <base href="{base_url}">
+        <link rel="stylesheet" href="/remnabot_overlay.css">
+        <script src="/remnabot_overlay.js" defer></script>
+        </head>
+        """
+        if "</head>" in html_content:
+            html_content = html_content.replace("</head>", injection, 1)
+
+        return web.Response(
+            text=html_content,
+            content_type="text/html",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
+        )
 
     webapp_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "webapp")
     return web.FileResponse(
