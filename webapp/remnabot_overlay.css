@@ -1,4 +1,4 @@
-/* Remna-Bot Floating Overlay Bar & Responsive UX System */
+/* Remna-Bot Floating Overlay Bar, Sidebar Integration & Full Remnawave Color Engine */
 
 /* Enforce bottom padding on Remnawave body & main containers so overlay bar NEVER covers content */
 html, body, #app, #root, main, [class*="main"], .layout, .page-wrapper {
@@ -10,39 +10,40 @@ html, body, #app, #root, main, [class*="main"], .layout, .page-wrapper {
     display: flex !important;
     align-items: center !important;
     padding: 10px 14px !important;
-    margin: 6px 8px !important;
+    margin: 8px 12px 12px 12px !important;
     border-radius: 14px !important;
-    background: rgba(99, 102, 241, 0.12) !important;
-    border: 1px solid rgba(129, 140, 248, 0.3) !important;
+    background: rgba(99, 102, 241, 0.18) !important;
+    border: 1px solid rgba(129, 140, 248, 0.4) !important;
     color: #ffffff !important;
     text-decoration: none !important;
     cursor: pointer !important;
     transition: all 0.2s ease !important;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    z-index: 100005 !important;
 }
 
 .remna-sidebar-link:hover {
-    background: rgba(99, 102, 241, 0.28) !important;
-    border-color: rgba(129, 140, 248, 0.6) !important;
-    transform: translateX(3px) !important;
+    background: rgba(99, 102, 241, 0.35) !important;
+    border-color: rgba(129, 140, 248, 0.8) !important;
+    transform: translateX(4px) !important;
 }
 
-/* Floating Remna-Bot Toolbar */
+/* Floating Remna-Bot Toolbar (Set z-index to 9999 so open drawers sit ABOVE overlay bar) */
 #remnabot-overlay-bar {
     position: fixed;
     bottom: 16px;
     right: 16px;
-    z-index: 999990;
+    z-index: 9999;
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 8px 14px;
-    background: rgba(11, 15, 25, 0.92);
+    background: rgba(11, 15, 25, 0.94);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 24px;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65), 0 0 20px rgba(99, 102, 241, 0.25);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(99, 102, 241, 0.3);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
     -webkit-tap-highlight-color: transparent;
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -80,7 +81,7 @@ html, body, #app, #root, main, [class*="main"], .layout, .page-wrapper {
     font-size: 12px;
     font-weight: 600;
     border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(255, 255, 255, 0.07);
+    background: rgba(255, 255, 255, 0.08);
     color: #f3f4f6;
     cursor: pointer;
     white-space: nowrap;
@@ -88,8 +89,8 @@ html, body, #app, #root, main, [class*="main"], .layout, .page-wrapper {
 }
 
 #remnabot-overlay-bar .overlay-btn:hover {
-    background: rgba(99, 102, 241, 0.25);
-    border-color: rgba(129, 140, 248, 0.5);
+    background: rgba(99, 102, 241, 0.3);
+    border-color: rgba(129, 140, 248, 0.6);
     transform: translateY(-1px);
 }
 
@@ -164,8 +165,8 @@ html, body, #app, #root, main, [class*="main"], .layout, .page-wrapper {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(12px);
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(14px);
     z-index: 1000000;
     display: flex;
     align-items: center;
@@ -342,10 +343,14 @@ html, body, #app, #root, main, [class*="main"], .layout, .page-wrapper {
     transform: scale(0.98);
 }
 
-/* --- Remnawave Live Theme Presets --- */
+/* ==========================================================================
+   FULL REMNAWAVE COLOR RECOLORING ENGINE (Overriding Tailwind & HSL Root Vars)
+   ========================================================================== */
 
-/* Theme: Cyberpunk Neon */
-body.theme-cyberpunk, body.theme-cyberpunk * {
+/* Theme 1: Cyberpunk Neon (Purple/Magenta/Cyan) */
+body.theme-cyberpunk, html.theme-cyberpunk {
+    background-color: #0c0714 !important;
+    color: #f5f3ff !important;
     --primary: 280 100% 65% !important;
     --background: 270 50% 6% !important;
     --card: 270 40% 10% !important;
@@ -354,8 +359,29 @@ body.theme-cyberpunk, body.theme-cyberpunk * {
     --accent: 320 100% 60% !important;
 }
 
-/* Theme: Emerald Matrix */
-body.theme-emerald, body.theme-emerald * {
+body.theme-cyberpunk div:not(#remna-custom-modal *):not(#remnabot-overlay-bar *),
+body.theme-cyberpunk aside:not(#remna-custom-modal *),
+body.theme-cyberpunk nav:not(#remna-custom-modal *),
+body.theme-cyberpunk main:not(#remna-custom-modal *),
+body.theme-cyberpunk header:not(#remna-custom-modal *),
+body.theme-cyberpunk [class*="bg-"]:not(#remna-custom-modal *):not(#remnabot-overlay-bar *),
+body.theme-cyberpunk [class*="card"]:not(#remna-custom-modal *) {
+    background-color: #170c26 !important;
+    border-color: rgba(192, 132, 252, 0.3) !important;
+}
+
+body.theme-cyberpunk button:not(#remnabot-overlay-bar *):not(#remna-custom-modal *),
+body.theme-cyberpunk [class*="primary"]:not(#remna-custom-modal *),
+body.theme-cyberpunk [class*="active"]:not(#remna-custom-modal *) {
+    background: linear-gradient(135deg, #a855f7, #ec4899) !important;
+    color: #ffffff !important;
+    border-color: #c084fc !important;
+}
+
+/* Theme 2: Emerald Matrix (Green/Cyan) */
+body.theme-emerald, html.theme-emerald {
+    background-color: #04120e !important;
+    color: #ecfdf5 !important;
     --primary: 158 84% 48% !important;
     --background: 160 50% 5% !important;
     --card: 160 40% 9% !important;
@@ -364,8 +390,29 @@ body.theme-emerald, body.theme-emerald * {
     --accent: 140 100% 50% !important;
 }
 
-/* Theme: Sunset Orange */
-body.theme-sunset, body.theme-sunset * {
+body.theme-emerald div:not(#remna-custom-modal *):not(#remnabot-overlay-bar *),
+body.theme-emerald aside:not(#remna-custom-modal *),
+body.theme-emerald nav:not(#remna-custom-modal *),
+body.theme-emerald main:not(#remna-custom-modal *),
+body.theme-emerald header:not(#remna-custom-modal *),
+body.theme-emerald [class*="bg-"]:not(#remna-custom-modal *):not(#remnabot-overlay-bar *),
+body.theme-emerald [class*="card"]:not(#remna-custom-modal *) {
+    background-color: #0a251c !important;
+    border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+body.theme-emerald button:not(#remnabot-overlay-bar *):not(#remna-custom-modal *),
+body.theme-emerald [class*="primary"]:not(#remna-custom-modal *),
+body.theme-emerald [class*="active"]:not(#remna-custom-modal *) {
+    background: linear-gradient(135deg, #10b981, #06b6d4) !important;
+    color: #ffffff !important;
+    border-color: #34d399 !important;
+}
+
+/* Theme 3: Sunset Orange (Fire/Amber) */
+body.theme-sunset, html.theme-sunset {
+    background-color: #140905 !important;
+    color: #fff7ed !important;
     --primary: 25 95% 53% !important;
     --background: 20 40% 6% !important;
     --card: 20 35% 10% !important;
@@ -374,12 +421,51 @@ body.theme-sunset, body.theme-sunset * {
     --accent: 350 90% 60% !important;
 }
 
-/* Theme: OLED Pure Black */
-body.theme-oled, body.theme-oled * {
+body.theme-sunset div:not(#remna-custom-modal *):not(#remnabot-overlay-bar *),
+body.theme-sunset aside:not(#remna-custom-modal *),
+body.theme-sunset nav:not(#remna-custom-modal *),
+body.theme-sunset main:not(#remna-custom-modal *),
+body.theme-sunset header:not(#remna-custom-modal *),
+body.theme-sunset [class*="bg-"]:not(#remna-custom-modal *):not(#remnabot-overlay-bar *),
+body.theme-sunset [class*="card"]:not(#remna-custom-modal *) {
+    background-color: #261209 !important;
+    border-color: rgba(249, 115, 22, 0.3) !important;
+}
+
+body.theme-sunset button:not(#remnabot-overlay-bar *):not(#remna-custom-modal *),
+body.theme-sunset [class*="primary"]:not(#remna-custom-modal *),
+body.theme-sunset [class*="active"]:not(#remna-custom-modal *) {
+    background: linear-gradient(135deg, #f97316, #ef4444) !important;
+    color: #ffffff !important;
+    border-color: #fb923c !important;
+}
+
+/* Theme 4: OLED Pure Black */
+body.theme-oled, html.theme-oled {
+    background-color: #000000 !important;
+    color: #ffffff !important;
     --primary: 210 100% 55% !important;
     --background: 0 0% 0% !important;
     --card: 0 0% 6% !important;
     --border: 0 0% 16% !important;
     --foreground: 0 0% 100% !important;
     --accent: 210 100% 50% !important;
+}
+
+body.theme-oled div:not(#remna-custom-modal *):not(#remnabot-overlay-bar *),
+body.theme-oled aside:not(#remna-custom-modal *),
+body.theme-oled nav:not(#remna-custom-modal *),
+body.theme-oled main:not(#remna-custom-modal *),
+body.theme-oled header:not(#remna-custom-modal *),
+body.theme-oled [class*="bg-"]:not(#remna-custom-modal *):not(#remnabot-overlay-bar *),
+body.theme-oled [class*="card"]:not(#remna-custom-modal *) {
+    background-color: #0a0a0c !important;
+    border-color: #27272a !important;
+}
+
+body.theme-oled button:not(#remnabot-overlay-bar *):not(#remna-custom-modal *),
+body.theme-oled [class*="primary"]:not(#remna-custom-modal *) {
+    background: linear-gradient(135deg, #2563eb, #3b82f6) !important;
+    color: #ffffff !important;
+    border-color: #60a5fa !important;
 }

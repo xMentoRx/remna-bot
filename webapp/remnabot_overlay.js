@@ -1,4 +1,4 @@
-// Remna-Bot Overlay Engine, Custom Sidebar Integration & Theme Customizer
+// Remna-Bot Overlay Engine, Custom Sidebar Integration & Full Color Customizer
 (function() {
     console.log("🚀 Remna-Bot Sidebar & Theme Customizer Engine Loaded!");
 
@@ -9,8 +9,20 @@
         { id: "theme-sunset", name: "Sunset Orange 🟠", color: "#f97316" },
         { id: "theme-oled", name: "OLED Pure Black 🖤", color: "#3b82f6" }
     ];
-    let currentTheme = "theme-default";
+
+    let currentTheme = localStorage.getItem("remnabot_theme") || "theme-default";
     let isMinimized = false;
+
+    function applyCurrentTheme() {
+        const allThemeClasses = themes.map(t => t.id);
+        document.body.classList.remove(...allThemeClasses);
+        document.documentElement.classList.remove(...allThemeClasses);
+
+        if (currentTheme !== "theme-default") {
+            document.body.classList.add(currentTheme);
+            document.documentElement.classList.add(currentTheme);
+        }
+    }
 
     function showToast(msg) {
         let toast = document.getElementById("remna-toast");
@@ -42,27 +54,35 @@
         setTimeout(() => { toast.style.opacity = "0"; }, 2500);
     }
 
-    // --- Left Sidebar Custom Menu Item Injection ---
+    // --- Left Sidebar & Mobile Drawer Custom Menu Item Injection ---
     function injectSidebarItem() {
-        if (document.getElementById("remna-sidebar-item")) return;
+        // Search for all navigation sections in Remnawave (both desktop sidebar & mobile drawer)
+        const candidates = document.querySelectorAll("nav, aside, [class*='sidebar'], [class*='drawer'], [class*='menu']");
+        for (let el of candidates) {
+            if (el.innerText && (el.innerText.includes("ИНСТРУМЕНТЫ") || el.innerText.includes("УПРАВЛЕНИЕ") || el.innerText.includes("ПОДПИСКА") || el.children.length > 2)) {
+                if (!el.querySelector("#remna-sidebar-item")) {
+                    const item = document.createElement("a");
+                    item.id = "remna-sidebar-item";
+                    item.className = "remna-sidebar-link";
+                    item.innerHTML = `
+                        <span style="font-size:16px; margin-right:8px;">⚡</span>
+                        <span style="font-weight:700; background:linear-gradient(135deg, #818cf8, #06b6d4); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">Remna-Bot Power-Up</span>
+                    `;
+                    item.onclick = function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.RemnaOverlay.openControlCenter("themes");
+                    };
 
-        const navContainers = document.querySelectorAll("aside nav, nav, [class*='sidebar-nav'], [class*='nav-list']");
-        for (let nav of navContainers) {
-            if (nav.children.length >= 2) {
-                const item = document.createElement("a");
-                item.id = "remna-sidebar-item";
-                item.className = "remna-sidebar-link";
-                item.innerHTML = `
-                    <span style="font-size:16px; margin-right:8px;">⚡</span>
-                    <span style="font-weight:700; background:linear-gradient(135deg, #818cf8, #06b6d4); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">Remna-Bot Power-Up</span>
-                `;
-                item.onclick = function(e) {
-                    e.preventDefault();
-                    window.RemnaOverlay.openControlCenter("themes");
-                };
-                nav.appendChild(item);
-                console.log("⚡ Remna-Bot Sidebar Item Injected Successfully!");
-                break;
+                    // Insert before social icons or at end of nav list
+                    const socialRow = el.querySelector("[class*='social'], .flex.gap-2");
+                    if (socialRow) {
+                        el.insertBefore(item, socialRow);
+                    } else {
+                        el.appendChild(item);
+                    }
+                    console.log("⚡ Remna-Bot Sidebar Item Injected Successfully!");
+                }
             }
         }
     }
@@ -99,20 +119,13 @@
 
     window.RemnaOverlay = {
         setTheme: function(themeId) {
-            const allThemeClasses = themes.map(t => t.id);
-            document.body.classList.remove(...allThemeClasses);
-            document.documentElement.classList.remove(...allThemeClasses);
-
             currentTheme = themeId;
-            if (themeId !== "theme-default") {
-                document.body.classList.add(themeId);
-                document.documentElement.classList.add(themeId);
-            }
+            localStorage.setItem("remnabot_theme", themeId);
+            applyCurrentTheme();
 
             const tObj = themes.find(t => t.id === themeId);
             showToast(`🎨 Тема оформления: ${tObj ? tObj.name : themeId}`);
-            
-            // Highlight active card if modal open
+
             document.querySelectorAll(".theme-card").forEach(c => {
                 if (c.getAttribute("data-theme") === themeId) {
                     c.classList.add("active");
@@ -146,7 +159,7 @@
                 <div class="remna-modal-card">
                     <div class="remna-modal-close" onclick="document.getElementById('remna-custom-modal').remove()">✕</div>
                     <h3>⚡ Remna-Bot Power-Up Центр</h3>
-                    
+
                     <div class="remna-tab-nav">
                         <button class="remna-tab-btn ${activeTab==='themes'?'active':''}" onclick="window.RemnaOverlay.switchTab('themes')">🎨 Темы и Цвета</button>
                         <button class="remna-tab-btn ${activeTab==='ssh'?'active':''}" onclick="window.RemnaOverlay.switchTab('ssh')">🛡️ SSH Безопасность</button>
@@ -170,8 +183,9 @@
 
         switchTab: function(tabName) {
             document.querySelectorAll(".remna-tab-btn").forEach(btn => btn.classList.remove("active"));
-            event.target.classList.add("active");
-            document.getElementById("remnaTabBody").innerHTML = this.getTabHtml(tabName);
+            if (event && event.target) event.target.classList.add("active");
+            const body = document.getElementById("remnaTabBody");
+            if (body) body.innerHTML = this.getTabHtml(tabName);
 
             if (tabName === 'speed') {
                 this.startSpeedtestAnimation();
@@ -180,12 +194,12 @@
 
         getTabHtml: function(tabName) {
             if (tabName === 'themes') {
-                let gridHtml = '<div style="font-size:13px; color:#94a3b8; margin-bottom:12px;">Выберите тему оформления панели Remnawave в режиме реального времени:</div><div class="theme-card-grid">';
+                let gridHtml = '<div style="font-size:13px; color:#94a3b8; margin-bottom:12px;">Выберите тему оформления всей панели Remnawave в режиме реального времени:</div><div class="theme-card-grid">';
                 themes.forEach(t => {
                     const isActive = t.id === currentTheme ? 'active' : '';
                     gridHtml += `
                         <div class="theme-card ${isActive}" data-theme="${t.id}" onclick="window.RemnaOverlay.setTheme('${t.id}')">
-                            <div class="preview-circle" style="background:${t.color}; shadow:0 0 10px ${t.color}"></div>
+                            <div class="preview-circle" style="background:${t.color}; box-shadow:0 0 10px ${t.color}"></div>
                             <div style="font-size:12px; font-weight:700;">${t.name}</div>
                         </div>
                     `;
@@ -324,10 +338,11 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
     };
 
     function init() {
+        applyCurrentTheme();
         injectOverlayBar();
         injectSidebarItem();
-        // Periodically verify sidebar injection if SPA re-renders DOM
-        setInterval(injectSidebarItem, 1000);
+        // Continuously check for dynamic SPA sidebar / mobile drawer mounts
+        setInterval(injectSidebarItem, 300);
     }
 
     if (document.readyState === "loading") {
