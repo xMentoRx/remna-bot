@@ -636,7 +636,7 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                                         👑 Основной сервер Панели
                                     </div>
                                     <div style="font-size:11px; color:#94a3b8; margin-top:3px;">
-                                        IP: <b>${location.hostname || '177.1.202.124'}</b> | SSH Порт: <b style="color:#10b981;">5422 🔒</b>
+                                        IP: <b style="color:#38bdf8;">177.1.202.124</b> (${location.hostname}) | SSH Порт: <b style="color:#10b981;">5422 🔒</b>
                                     </div>
                                 </div>
                                 <button class="overlay-btn" style="background:rgba(99,102,241,0.3); border-color:rgba(129,140,248,0.6);">🔑 Ключи ➔</button>
@@ -644,17 +644,16 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                         `;
 
                         fetchedKeys.forEach((k, idx) => {
-                            // Avoid duplicating main panel if same host
-                            if (k.host !== location.hostname) {
+                            if (k.host !== location.hostname && k.host !== "177.1.202.124") {
                                 const flag = k.host.includes("185") ? "🇩🇪" : (k.host.includes("194") ? "🇳🇱" : "🌐");
                                 html += `
-                                    <div class="theme-card" style="text-align:left; padding:14px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;" onclick="window.RemnaOverlay.openServerSshDetail(${idx})">
+                                    <div class="theme-card" style="text-align:left; padding:14px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;" onclick="window.RemnaOverlay.openServerSshDetail(${idx + 1})">
                                         <div>
                                             <div style="font-size:14px; font-weight:700; color:#ffffff; display:flex; align-items:center; gap:6px;">
                                                 ${flag} Нода ${k.host}
                                             </div>
                                             <div style="font-size:11px; color:#94a3b8; margin-top:3px;">
-                                                IP: <b>${k.host}</b> | SSH Порт: <b style="color:#10b981;">${k.port || 5422} 🔒</b>
+                                                IP: <b style="color:#38bdf8;">${k.host}</b> | SSH Порт: <b style="color:#10b981;">${k.port || 5422} 🔒</b>
                                             </div>
                                         </div>
                                         <button class="overlay-btn" style="background:rgba(16,185,129,0.3); border-color:rgba(52,211,153,0.6);">🔑 Ключи ➔</button>
@@ -669,16 +668,22 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
         },
 
         openServerSshDetail: function(idx) {
-            let serverObj = fetchedKeys[idx];
-            if (!serverObj) {
+            let serverObj = null;
+            if (idx === 0) {
                 serverObj = {
                     title: "👑 Основной сервер Панели",
-                    host: location.hostname || "177.1.202.124",
+                    host: "177.1.202.124",
                     port: 5422,
-                    private_key: null
+                    private_key: (fetchedKeys[0] ? fetchedKeys[0].private_key : null)
                 };
             } else {
-                serverObj.title = serverObj.host === location.hostname ? "👑 Основной сервер Панели" : `🌐 Нода ${serverObj.host}`;
+                let keyItem = fetchedKeys[idx - 1] || fetchedKeys[idx];
+                serverObj = {
+                    title: `🌐 Нода ${keyItem ? keyItem.host : 'VPS'}`,
+                    host: keyItem ? keyItem.host : "177.1.202.124",
+                    port: keyItem ? (keyItem.port || 5422) : 5422,
+                    private_key: keyItem ? keyItem.private_key : null
+                };
             }
 
             selectedSshServer = serverObj;
