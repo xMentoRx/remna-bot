@@ -339,18 +339,16 @@ async def remna_embed_handler(request: web.Request) -> web.Response:
         )
 
     webapp_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "webapp")
-    return web.FileResponse(
-        os.path.join(webapp_dir, "index.html"),
-        headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
-    )
+    res = web.FileResponse(os.path.join(webapp_dir, "index.html"))
+    res.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return res
 
 # --- WebApp Static Files Handler ---
 async def index_handler(request: web.Request) -> web.Response:
     webapp_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "webapp")
-    return web.FileResponse(
-        os.path.join(webapp_dir, "index.html"),
-        headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
-    )
+    res = web.FileResponse(os.path.join(webapp_dir, "index.html"))
+    res.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return res
 
 async def api_balancer_status_handler(request: web.Request) -> web.Response:
     adapter = get_api_adapter()
