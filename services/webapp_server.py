@@ -79,10 +79,11 @@ async def api_deploy_panel_handler(request: web.Request) -> web.Response:
 async def api_deploy_node_handler(request: web.Request) -> web.Response:
     try:
         data = await request.json()
-        ip = data.get("ip")
-        password = data.get("password")
-        country = data.get("country", "NL").upper()
-        domain = data.get("domain", "google.com")
+        ip = (data.get("host") or data.get("ip") or "").strip()
+        password = (data.get("password") or "").strip()
+        name = (data.get("name") or "").strip()
+        country = (data.get("country") or "DE").upper()
+        domain = (data.get("domain") or "sub.remna-bot.xyz").strip()
 
         if not (ip and password):
             return web.json_response({"status": "error", "message": "Укажите IP и пароль ноды"}, status=400)
@@ -96,7 +97,7 @@ async def api_deploy_node_handler(request: web.Request) -> web.Response:
         if panel_url and api_token:
             try:
                 adapter = RemnawaveAPIAdapter(panel_url, api_token)
-                node_name = f"{country}-{ip}"
+                node_name = name or f"{country}-{ip}"
                 # 1. Attempt creating dedicated Self-Steal VLESS-Reality Profile for this node
                 try:
                     prof_uuid = await adapter.create_self_steal_profile(node_name=node_name, domain=domain)
@@ -108,15 +109,18 @@ async def api_deploy_node_handler(request: web.Request) -> web.Response:
             except Exception as e:
                 logger.warning(f"Could not auto-register node in Remnawave API: {e}")
 
-        res = await deploy_node_async(
+        success = await deploy_node_async(
             host=ip,
             password=password,
-            country=country,
             domain=domain,
+            country_code=country,
             node_secret=node_secret,
             panel_url=panel_url
         )
-        return web.json_response(res)
+        if success:
+            return web.json_response({"status": "success", "message": "Нода развернута"})
+        else:
+            return web.json_response({"status": "error", "message": "Ошибка подключения к VPS ноды"}, status=500)
     except Exception as e:
         logger.error(f"Error in node deploy handler: {e}")
         return web.json_response({"status": "error", "message": str(e)}, status=500)
