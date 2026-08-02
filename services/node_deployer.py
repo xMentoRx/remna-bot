@@ -59,6 +59,41 @@ def generate_decoy_html(domain: str) -> str:
     ]
     return random.choice(templates)
 
+def connect_smart_ssh(client: paramiko.SSHClient, host: str, password: str, progress_cb: Optional[Callable[[str], None]] = None) -> bool:
+    """Tries connecting via standard Port 22 + Password first. If fails, tries Port 5422 + Saved Ed25519 Key from ssh_keys.json!"""
+    # 1. Attempt standard port 22 + password
+    try:
+        if progress_cb:
+            progress_cb(f"🔑 SSH Подключение к ноде `{host}` (Порт 22)...")
+        client.connect(hostname=host, port=22, username="root", password=password, timeout=10)
+        return True
+    except Exception as err1:
+        logger.info(f"Port 22 password connect on {host} failed ({err1}), checking for saved hardened SSH key...")
+
+    # 2. Check if we have a saved SSH key for this host from previous hardening
+    try:
+        from services.ssh_hardening import get_ssh_key
+        key_data = get_ssh_key(host)
+        if key_data and key_data.get("private_key"):
+            import io
+            pkey = paramiko.Ed25519Key.from_private_key(io.StringIO(key_data["private_key"]))
+            port = key_data.get("port", 5422)
+            if progress_cb:
+                progress_cb(f"🛡️ VPS уже защищен! Вход по SSH ключу Ed25519 (Порт {port})...")
+            client.connect(hostname=host, port=port, username="root", pkey=pkey, timeout=10)
+            return True
+    except Exception as err2:
+        logger.warning(f"Hardened key connect on {host} failed: {err2}")
+
+    # 3. Last attempt: try port 5422 with password
+    try:
+        client.connect(hostname=host, port=5422, username="root", password=password, timeout=10)
+        return True
+    except Exception:
+        pass
+
+    return False
+
 def run_ssh_commands(
     host: str,
     password: str,
@@ -69,14 +104,8 @@ def run_ssh_commands(
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
-        if progress_cb:
-            progress_cb(f"🔑 Подключение к VPS ноды `{host}` по SSH...")
-        try:
-            client.connect(hostname=host, username="root", password=password, timeout=15)
-        except paramiko.AuthenticationException:
-            return {"status": "error", "message": f"Ошибка SSH: Неверный Root-пароль от VPS ноды `{host}`!"}
-        except Exception as conn_err:
-            return {"status": "error", "message": f"Не удалось подключиться к VPS `{host}`: {conn_err}"}
+        if not connect_smart_ssh(client, host, password, progress_cb):
+            return False
 
         for idx, cmd in enumerate(commands, start=1):
             if progress_cb:
@@ -113,9 +142,8 @@ def run_node_full_deploy(
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
-        if progress_cb:
-            progress_cb(f"🔑 SSH Подключение к ноде `{host}`...")
-        client.connect(hostname=host, username="root", password=password, timeout=15)
+        if not connect_smart_ssh(client, host, password, progress_cb):
+            raise Exception(f"Не удалось подключиться к VPS `{host}` ни по паролю (Порт 22), ни по ключу SSH (Порт 5422)!")
 
         def exec_cmd(cmd: str, msg: str):
             if progress_cb:
