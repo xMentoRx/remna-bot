@@ -194,6 +194,10 @@ services:
       - "127.0.0.1:3000:3000"
     environment:
       DATABASE_URL: "postgresql://remnawave:{db_password}@postgres:5432/remnawave?sslmode=disable"
+      FRONT_END_DOMAIN: "{panel_domain}"
+      SUB_PUBLIC_DOMAIN: "{sub_domain}"
+      METRICS_USER: "admin"
+      METRICS_PASS: "{secrets.token_urlsafe(16)}"
       APP_SECRET: "{jwt_secret}"
       JWT_AUTH_SECRET: "{jwt_secret}"
       JWT_SECRET: "{jwt_secret}"
