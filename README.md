@@ -33,24 +33,31 @@
 
 ## 📦 Быстрый старт (Установка за 1 минуту)
 
-### Вариант 1: Автоматический скрипт установки на VPS
+### 0️⃣ Подготовка нового VPS (1 команда)
+Если у вас голый Linux VPS (Ubuntu / Debian), подготовьте систему в 1 клик:
+```bash
+apt update && apt install -y curl nano git
+```
 
-Запустите на вашем VPS (Ubuntu 22.04 / 24.04 или Debian 12):
+### Вариант 1: Автоматический скрипт установки на VPS (Рекомендуется)
+
+Запустите скрипт на вашем VPS:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/username/remna-bot/main/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/xMentoRx/remna-bot/main/install.sh)
 ```
 
 ### Вариант 2: Запуск через Docker Compose
 
 ```bash
-git clone https://github.com/username/remna-bot.git
+git clone https://github.com/xMentoRx/remna-bot.git
 cd remna-bot
 cp .env.example .env
-# Отредактируйте .env (укажите BOT_TOKEN и ADMIN_CHAT_IDS)
+# Укажите BOT_TOKEN и ADMIN_CHAT_IDS
 nano .env
 docker compose up -d --build
 ```
+
 
 ---
 

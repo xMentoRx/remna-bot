@@ -20,20 +20,56 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
+echo -e "${YELLOW}📦 Проверка и установка системных зависимостей (curl, nano, git)...${NC}"
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -y && apt-get install -y --no-install-recommends curl ca-certificates nano git 2>/dev/null || true
+
 INSTALL_DIR="$(pwd)"
 
+
 if [ ! -f "$INSTALL_DIR/.env" ]; then
-    echo -e "${YELLOW}📝 Заполнение базовой конфигурации (всего 2 параметра):${NC}"
+    echo -e "${YELLOW}📝 Заполнение конфигурации бота:${NC}"
     echo ""
-    read -p "1. Введите Telegram Bot Token (от @BotFather): " BOT_TOKEN
-    read -p "2. Введите Telegram Admin ID (свой ID или несколько через запятую): " ADMIN_IDS
+    read -p "1. Введите Telegram Bot Token (от @BotFather) [Обязательно]: " BOT_TOKEN
+    read -p "2. Введите Telegram Admin ID (ID админа или несколько через запятую) [Обязательно]: " ADMIN_IDS
     echo ""
+    echo -e "${CYAN}💡 Настройка группы алертов (можно пропустить и настроить позже в .env):${NC}"
+    read -p "3. ID супергруппы/канала для алертов мониторинга (напр. -1001234567890) [Enter - пропустить]: " ALERT_CHAT_ID
+
+    ALERT_TOPIC_ID=""
+    if [ -n "$ALERT_CHAT_ID" ]; then
+        read -p "4. ID топика/форума в группах (напр. 2 или 0 для общего чата) [Enter - 0]: " ALERT_TOPIC_INPUT
+        ALERT_TOPIC_ID="${ALERT_TOPIC_INPUT:-0}"
+    fi
 
     cat <<EOF > "$INSTALL_DIR/.env"
+# ==========================================
+# 🤖 REMNA-BOT ENVIRONMENT CONFIGURATION
+# ==========================================
+
+# Обязательные настройки
 BOT_TOKEN=${BOT_TOKEN}
 ADMIN_CHAT_IDS=${ADMIN_IDS}
 
-# Динамически заполняется при первом старте в Telegram
+EOF
+
+    if [ -n "$ALERT_CHAT_ID" ]; then
+        cat <<EOF >> "$INSTALL_DIR/.env"
+# Мониторинг и Алерты
+ALERT_CHAT_ID=${ALERT_CHAT_ID}
+ALERT_TOPIC_ID=${ALERT_TOPIC_ID}
+EOF
+    else
+        cat <<EOF >> "$INSTALL_DIR/.env"
+# Мониторинг и Алерты (Заполните при необходимости)
+# ALERT_CHAT_ID=-1001234567890
+# ALERT_TOPIC_ID=0
+EOF
+    fi
+
+    cat <<EOF >> "$INSTALL_DIR/.env"
+
+# Динамически заполняется при первом старте в Telegram MiniApp
 API_URL=
 API_TOKEN=
 
@@ -41,8 +77,9 @@ API_TOKEN=
 WEBAPP_PORT=8080
 WEBAPP_HOST=0.0.0.0
 EOF
-    echo -e "${GREEN}✅ Файл .env успешно создан!${NC}"
+    echo -e "${GREEN}✅ Файл .env успешно сформирован!${NC}"
 fi
+
 
 echo -e "${YELLOW}📦 Проверка Docker и Docker Compose...${NC}"
 if ! command -v docker &> /dev/null; then
