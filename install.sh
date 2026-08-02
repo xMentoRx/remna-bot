@@ -26,8 +26,16 @@ apt-get update -y && apt-get install -y --no-install-recommends curl ca-certific
 
 INSTALL_DIR="$(pwd)"
 
-
-if [ ! -f "$INSTALL_DIR/.env" ]; then
+if [ ! -f "$INSTALL_DIR/docker-compose.yml" ]; then
+    echo -e "${YELLOW}📥 Клонирование репозитория remna-bot...${NC}"
+    if [ -d "$INSTALL_DIR/remna-bot" ]; then
+        cd "$INSTALL_DIR/remna-bot" && git pull
+    else
+        git clone https://github.com/xMentoRx/remna-bot.git "$INSTALL_DIR/remna-bot"
+        cd "$INSTALL_DIR/remna-bot"
+    fi
+    INSTALL_DIR="$(pwd)"
+fi
     echo -e "${YELLOW}📝 Заполнение конфигурации бота:${NC}"
     echo ""
     read -p "1. Введите Telegram Bot Token (от @BotFather) [Обязательно]: " BOT_TOKEN
