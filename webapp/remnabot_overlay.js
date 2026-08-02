@@ -506,8 +506,9 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                 const defaultCmd = `ssh -i "C:\\Users\\username\\.ssh\\remnabot.pem" root@${host} -p 5422`;
 
                 return `
+                    <div id="vpsSelectContainer"></div>
                     <div style="font-size:12px; color:#cbd5e1; margin-bottom:14px; background:rgba(255,255,255,0.04); padding:12px; border-radius:14px; border:1px solid rgba(255,255,255,0.1);">
-                        🔒 <b>Статус защиты VPS:</b> SSH Порт <span style="color:#10b981; font-weight:800;">5422</span> (Харденинг активен)<br>
+                        🔒 <b>Статус защиты VPS:</b> SSH Порт <span id="vpsPortSpan" style="color:#10b981; font-weight:800;">5422</span> (Харденинг активен)<br>
                         🔑 Вход по паролю: <span style="color:#ef4444; font-weight:700;">Отключен (PasswordAuthentication no)</span><br>
                         🛡️ Фильтр брутфорса: <span style="color:#10b981; font-weight:700;">Fail2ban Active</span>
                     </div>
@@ -581,16 +582,40 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
             fetch('/api/security/keys')
                 .then(r => r.json())
                 .then(data => {
-                    const keys = data.keys || [];
-                    if (keys.length > 0 && keys[0].private_key) {
-                        const box = document.getElementById("pemKeyBox");
-                        if (box) box.value = keys[0].private_key;
+                    fetchedKeys = data.keys || [];
+                    const selDiv = document.getElementById("vpsSelectContainer");
+
+                    if (fetchedKeys.length > 1 && selDiv) {
+                        let optsHtml = '<label style="color:#38bdf8; font-weight:700; margin-bottom:6px; display:block;">🖥️ Выберите защищенный сервер (Панель или Нода):</label><select id="vpsSelectBox" class="remna-input" style="margin-bottom:12px;" onchange="window.RemnaOverlay.selectVpsKey(this.value)">';
+                        fetchedKeys.forEach((k, idx) => {
+                            optsHtml += `<option value="${idx}">🖥️ ${k.host || 'VPS Сервер'} (SSH Порт ${k.port || 5422})</option>`;
+                        });
+                        optsHtml += '</select>';
+                        selDiv.innerHTML = optsHtml;
+                    }
+
+                    if (fetchedKeys.length > 0) {
+                        this.selectVpsKey(0);
+                    } else {
                         this.updateSshCmd();
                     }
                 })
                 .catch(() => {
                     this.updateSshCmd();
                 });
+        },
+
+        selectVpsKey: function(idx) {
+            const keyObj = fetchedKeys[idx];
+            if (!keyObj) return;
+
+            const box = document.getElementById("pemKeyBox");
+            if (box && keyObj.private_key) box.value = keyObj.private_key;
+
+            const portSpan = document.getElementById("vpsPortSpan");
+            if (portSpan) portSpan.innerText = keyObj.port || 5422;
+
+            this.updateSshCmd(keyObj.host, keyObj.port);
         },
 
         copyKeyToClipboard: function() {
@@ -607,23 +632,28 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
         downloadPemKey: function() {
             const box = document.getElementById("pemKeyBox");
             if (!box) return;
+            const input = document.getElementById("vpsSelectBox");
+            const idx = input ? parseInt(input.value) : 0;
+            const host = fetchedKeys[idx] ? fetchedKeys[idx].host : (location.hostname || "remnabot");
+
             const blob = new Blob([box.value], { type: "application/x-pem-file" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = "id_ed25519_remnabot.pem";
+            a.download = `id_ed25519_${host}.pem`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            showToast("💾 Файл id_ed25519_remnabot.pem скачан!");
+            showToast(`💾 Файл id_ed25519_${host}.pem скачан!`);
         },
 
-        updateSshCmd: function() {
+        updateSshCmd: function(customHost = null, customPort = null) {
             const input = document.getElementById("sshPathInput");
             const path = input ? input.value.trim() : "C:\\Users\\username\\.ssh\\remnabot.pem";
-            const host = location.hostname || "177.1.202.124";
-            const cmd = `ssh -i "${path}" root@${host} -p 5422`;
+            const host = customHost || location.hostname || "177.1.202.124";
+            const port = customPort || 5422;
+            const cmd = `ssh -i "${path}" root@${host} -p ${port}`;
             const cmdBox = document.getElementById("sshCmdBox");
             if (cmdBox) cmdBox.value = cmd;
         },

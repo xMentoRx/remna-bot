@@ -204,8 +204,17 @@ services:
         if node_secret:
             exec_cmd("cd /opt/remnawave-node && docker compose up -d", "Запуск Remnawave Node контейнера")
 
+        # Auto-run SSH Hardening on the new Node VPS
+        try:
+            from services.ssh_hardening import run_ssh_hardening
+            if progress_cb:
+                progress_cb(f"🛡️ Выполнение SSH Харденинга для Ноды {host}...")
+            run_ssh_hardening(host, password, current_port=22, new_port=5422)
+        except Exception as hard_err:
+            logger.warning(f"Auto SSH hardening on node {host} skipped: {hard_err}")
+
         if progress_cb:
-            progress_cb(f"🎉 Нода `{host}` ({country_code}) успешно настроена!")
+            progress_cb(f"🎉 Нода `{host}` ({country_code}) успешно настроена и защищена!")
         return True
 
     except Exception as e:
