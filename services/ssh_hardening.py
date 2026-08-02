@@ -13,11 +13,22 @@ def generate_ed25519_keypair(comment: str = "remna-bot-key") -> Tuple[str, str]:
     Generates a new Ed25519 SSH private/public keypair in memory.
     Returns (private_key_pem_str, public_key_ssh_str).
     """
-    key = paramiko.Ed25519Key.generate()
-    out = io.StringIO()
-    key.write_private_key(out)
-    private_key_pem = out.getvalue()
-    public_key_ssh = f"{key.get_name()} {key.get_base64()} {comment}"
+    from cryptography.hazmat.primitives.asymmetric import ed25519
+    from cryptography.hazmat.primitives import serialization
+
+    key = ed25519.Ed25519PrivateKey.generate()
+    private_key_pem = key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.OpenSSH,
+        encryption_algorithm=serialization.NoEncryption()
+    ).decode('utf-8')
+
+    public_ssh_bytes = key.public_key().public_bytes(
+        encoding=serialization.Encoding.OpenSSH,
+        format=serialization.PublicFormat.OpenSSH
+    ).decode('utf-8')
+
+    public_key_ssh = f"{public_ssh_bytes} {comment}"
     return private_key_pem, public_key_ssh
 
 def save_stored_key(host: str, private_key_pem: str, public_key_ssh: str, port: int) -> Dict[str, Any]:

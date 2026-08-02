@@ -164,7 +164,7 @@ def run_panel_ssh_install(
         )
 
         # 4. Enable services
-        exec_cmd("systemctl enable --now docker caddy", "Запуск системных служб Docker и Caddy")
+        exec_cmd("systemctl enable --now docker", "Запуск системной службы Docker Engine")
 
         # 5. Prepare directories explicitly before SFTP
         exec_cmd("mkdir -p /opt/remnawave /etc/caddy", "Подготовка каталогов /opt/remnawave и /etc/caddy")
@@ -274,7 +274,7 @@ volumes:
 
         # 8. Run Docker Compose & reload Caddy SSL
         exec_cmd("cd /opt/remnawave && docker compose up -d", "Запуск контейнеров Remnawave Backend & Postgres")
-        exec_cmd("systemctl reload caddy 2>/dev/null || systemctl restart caddy", "Выпуск SSL сертификатов Caddy")
+        exec_cmd("systemctl enable caddy 2>/dev/null || true; systemctl restart caddy 2>/dev/null || caddy run --config /etc/caddy/Caddyfile &", "Запуск службы Caddy и авто-выпуск SSL")
 
         panel_url = f"https://{panel_domain}"
         token = auto_register_admin(panel_url, admin_username, admin_password)
