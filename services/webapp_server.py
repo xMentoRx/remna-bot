@@ -7,7 +7,7 @@ from typing import Dict, Any
 from config import API_URL, API_TOKEN, WEBAPP_PORT, WEBAPP_HOST, load_settings
 from services.remnawave_api import RemnawaveAPIAdapter
 from services.panel_deployer import deploy_fresh_panel_async
-from services.node_deployer import deploy_node_async
+from services.node_deployer import deploy_node_async, clean_api_name
 
 logger = logging.getLogger("remna-bot.webapp")
 
@@ -97,7 +97,7 @@ async def api_deploy_node_handler(request: web.Request) -> web.Response:
         if panel_url and api_token:
             try:
                 adapter = RemnawaveAPIAdapter(panel_url, api_token)
-                node_name = name or f"{country}-{ip}"
+                node_name = clean_api_name(name) if name else f"{country}-{ip}"
                 # 1. Attempt creating dedicated Self-Steal VLESS-Reality Profile for this node
                 try:
                     prof_uuid = await adapter.create_self_steal_profile(node_name=node_name, domain=domain)
