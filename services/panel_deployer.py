@@ -159,7 +159,9 @@ def run_panel_ssh_install(
             "if ! command -v caddy >/dev/null 2>&1; then "
             "  curl -fsSL 'https://caddyserver.com/api/download?os=linux&arch=amd64' -o /usr/bin/caddy && chmod +x /usr/bin/caddy; "
             "  caddy service install 2>/dev/null || true; "
-            "fi",
+            "fi; "
+            "groupadd --system caddy 2>/dev/null || true; "
+            "useradd --system --gid caddy --create-home --home-dir /var/lib/caddy --shell /usr/sbin/nologin caddy 2>/dev/null || true",
             "Автоматическая гарантия установки Docker Engine & Caddy SSL"
         )
 
