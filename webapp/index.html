@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Remna-Bot Admin Companion & MiniApp</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Background Patterns Overlay Container -->
+    <div id="bgPatternLayer" class="bg-pattern-layer bg-pattern-waves">
+        <div class="glow-orb orb-1"></div>
+        <div class="glow-orb orb-2"></div>
+    </div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="glass-header">
+            <div class="brand">
+                <span class="logo-icon">🚀</span>
+                <div class="brand-text">
+                    <h1>Remna-Bot MiniApp</h1>
+                    <div class="status-row">
+                        <span class="status-badge" id="connStatus">🟢 Подключено</span>
+                        <span class="version-badge" id="panelVersion">Remnawave Auto</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dynamic Navigation Tabs -->
+        <nav class="nav-tabs">
+            <button class="tab-btn active" data-tab="tab-dashboard">📊 Дашборд</button>
+            <button class="tab-btn" data-tab="tab-nodes">🖥️ Ноды</button>
+            <button class="tab-btn" data-tab="tab-users">👥 Юзеры</button>
+            <button class="tab-btn" data-tab="tab-features">🔥 Фишки</button>
+            <button class="tab-btn" data-tab="tab-theme">🎨 Стиль</button>
+        </nav>
+
+        <!-- Toast Notifications Container -->
+        <div id="toastContainer" class="toast-container"></div>
+
+        <!-- Main Content Area -->
+        <main class="content-area">
+            <!-- TAB 1: Dashboard -->
+            <section id="tab-dashboard" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="stat-card glass">
+                        <span class="stat-title">🖥️ Всего Нод</span>
+                        <span class="stat-value" id="valTotalNodes">--</span>
+                    </div>
+                    <div class="stat-card glass">
+                        <span class="stat-title">🟢 В Сети</span>
+                        <span class="stat-value text-success" id="valOnlineNodes">--</span>
+                    </div>
+                    <div class="stat-card glass">
+                        <span class="stat-title">👥 Пользователи</span>
+                        <span class="stat-value text-accent" id="valOnlineUsers">--</span>
+                    </div>
+                    <div class="stat-card glass">
+                        <span class="stat-title">📡 Трафик</span>
+                        <span class="stat-value" id="valTotalTraffic">--</span>
+                    </div>
+                </div>
+
+                <div class="section-card glass mt-4">
+                    <h3>⚡ 1-Click Деплоеры</h3>
+                    <div class="btn-group mt-2">
+                        <button class="action-btn primary" onclick="openDeployPanelModal()">🚀 Развернуть Свежую Панель</button>
+                        <button class="action-btn secondary" onclick="openDeployNodeModal()">🖥️ Добавить Новую Ноду</button>
+                    </div>
+                </div>
+
+                <div class="section-card glass mt-3">
+                    <h3>🛡️ Оперативные утилиты & Безопасность</h3>
+                    <div class="btn-group mt-2">
+                        <button class="action-btn secondary" onclick="openSshHardeningModal()">🛡️ Усилить безопасность VPS (SSH Hardening)</button>
+                        <button class="action-btn secondary" onclick="openSpeedtestModal()">⚡ Ookla 10Gbit Speedtest</button>
+                        <button class="action-btn secondary" onclick="runAction('audit_all')">🔍 5/5 Аудит инфраструктуры</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: Nodes -->
+            <section id="tab-nodes" class="tab-content">
+                <div class="section-header">
+                    <h3>🖥️ Управление Нодами Инфраструктуры</h3>
+                    <button class="btn-sm primary" onclick="openDeployNodeModal()">+ Добавить Ноду</button>
+                </div>
+                <div id="nodesListContainer" class="nodes-list mt-3">
+                    <div class="loading-spinner">Загрузка нод...</div>
+                </div>
+            </section>
+
+            <!-- TAB 3: Users -->
+            <section id="tab-users" class="tab-content">
+                <!-- Remnawave Official Metric Counters Header -->
+                <div class="user-metrics-row mb-3">
+                    <div class="user-metric-card glass">
+                        <span class="lbl">Всего</span>
+                        <span class="val" id="cntTotalUsers">--</span>
+                    </div>
+                    <div class="user-metric-card glass">
+                        <span class="lbl text-success">Active</span>
+                        <span class="val text-success" id="cntActiveUsers">--</span>
+                    </div>
+                    <div class="user-metric-card glass">
+                        <span class="lbl text-error">Expired</span>
+                        <span class="val text-error" id="cntExpiredUsers">--</span>
+                    </div>
+                    <div class="user-metric-card glass">
+                        <span class="lbl text-warning">Limited</span>
+                        <span class="val text-warning" id="cntLimitedUsers">--</span>
+                    </div>
+                </div>
+
+                <div class="search-box glass">
+                    <input type="text" id="userSearchInput" placeholder="🔍 Поиск по TG ID / Username / user_TGID / UUID..." onkeyup="searchUsers()">
+                </div>
+                <div id="usersListContainer" class="users-list mt-3">
+                    <div class="empty-state">Введите запрос для поиска пользователя</div>
+                </div>
+            </section>
+
+            <!-- TAB 4: Bedolaga Features -->
+            <section id="tab-features" class="tab-content">
+                <div class="feature-card glass">
+                    <div class="feature-icon">🚀</div>
+                    <div class="feature-info">
+                        <h4>BBRv3 + XanMod Accelerator</h4>
+                        <p>Оптимизация сетевого стека ядра Linux для максимальной скорости каналов.</p>
+                    </div>
+                    <button class="action-btn secondary" onclick="runAction('bbr_boost')">Накатить Буст</button>
+                </div>
+
+                <div class="feature-card glass mt-3">
+                    <div class="feature-icon">🛡️</div>
+                    <div class="feature-info">
+                        <h4>Stealth Nginx / Unix Socket</h4>
+                        <p>Маскировка Xray Core под реальный веб-сайт на порту 443.</p>
+                    </div>
+                    <button class="action-btn secondary" onclick="runAction('stealth_nginx')">Оптимизировать</button>
+                </div>
+
+                <div class="feature-card glass mt-3">
+                    <div class="feature-icon">🧠</div>
+                    <div class="feature-info">
+                        <h4>WARP AI-Routes Patch</h4>
+                        <p>Автоматическая разблокировка ChatGPT, Gemini, Claude на нодах.</p>
+                    </div>
+                    <button class="action-btn secondary" onclick="runAction('warp_patch')">Применить патч</button>
+                </div>
+            </section>
+
+            <!-- TAB 5: Theme Customizer (Bedolaga Style) -->
+            <section id="tab-theme" class="tab-content">
+                <div class="section-card glass">
+                    <h3>🎨 Готовые Пресеты Оформления</h3>
+                    <p class="subtitle">Выберите одну из дизайнерских тем:</p>
+                    
+                    <div class="presets-grid mt-3">
+                        <div class="preset-card active" onclick="applyPreset('cyberpunk')">
+                            <div class="preset-preview" style="background: linear-gradient(135deg, #6366f1, #06b6d4);"></div>
+                            <span>Neon Cyber</span>
+                        </div>
+                        <div class="preset-card" onclick="applyPreset('emerald')">
+                            <div class="preset-preview" style="background: linear-gradient(135deg, #10b981, #059669);"></div>
+                            <span>Emerald Stealth</span>
+                        </div>
+                        <div class="preset-card" onclick="applyPreset('sunset')">
+                            <div class="preset-preview" style="background: linear-gradient(135deg, #f59e0b, #ef4444);"></div>
+                            <span>Sunset Crimson</span>
+                        </div>
+                        <div class="preset-card" onclick="applyPreset('midnight')">
+                            <div class="preset-preview" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);"></div>
+                            <span>Midnight OLED</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card glass mt-3">
+                    <h3>🌊 Дизайн и Узоры Фона</h3>
+                    <div class="pattern-selector mt-3">
+                        <button class="pattern-btn active" onclick="setBgPattern('waves')">🌊 Волны</button>
+                        <button class="pattern-btn" onclick="setBgPattern('dots')">💬 Точки</button>
+                        <button class="pattern-btn" onclick="setBgPattern('mesh')">📐 Сетка</button>
+                        <button class="pattern-btn" onclick="setBgPattern('glow')">✨ Свечение</button>
+                        <button class="pattern-btn" onclick="setBgPattern('none')">🚫 Без узора</button>
+                    </div>
+                </div>
+
+                <div class="section-card glass mt-3">
+                    <h3>🎛️ Ручные Цвета (Палитра & HEX-коды)</h3>
+                    <p class="subtitle">Вводите HEX-коды из нейросети или выбирайте в палитре:</p>
+
+                    <div class="color-picker-row mt-3">
+                        <label>Основной цвет (Primary):</label>
+                        <div class="picker-inputs">
+                            <input type="color" id="pickerPrimaryColor" onchange="syncColorFromPicker('primary')">
+                            <input type="text" id="hexPrimaryColor" placeholder="#6366f1" onkeyup="syncColorFromHex('primary')">
+                        </div>
+                    </div>
+
+                    <div class="color-picker-row mt-3">
+                        <label>Акцентный цвет (Accent):</label>
+                        <div class="picker-inputs">
+                            <input type="color" id="pickerAccentColor" onchange="syncColorFromPicker('accent')">
+                            <input type="text" id="hexAccentColor" placeholder="#06b6d4" onkeyup="syncColorFromHex('accent')">
+                        </div>
+                    </div>
+
+                    <div class="color-picker-row mt-3">
+                        <label>Цвет фона (Background):</label>
+                        <div class="picker-inputs">
+                            <input type="color" id="pickerBgColor" onchange="syncColorFromPicker('bg')">
+                            <input type="text" id="hexBgColor" placeholder="#0b0f19" onkeyup="syncColorFromHex('bg')">
+                        </div>
+                    </div>
+
+                    <button class="action-btn secondary mt-4" onclick="resetThemeDefaults()">🔄 Сбросить к дефолту</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- MODAL: SpeedTest Interactive -->
+    <div id="modalSpeedtest" class="modal-overlay">
+        <div class="modal-card glass">
+            <div class="modal-header">
+                <h3>⚡ Ookla 10Gbit Speedtest</h3>
+                <button class="close-btn" onclick="closeModal('modalSpeedtest')">✕</button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="speedometer-box mt-3">
+                    <span class="speed-val" id="speedVal">0</span>
+                    <span class="speed-unit">Mbps</span>
+                </div>
+                <div class="speed-progress-bar mt-3">
+                    <div class="speed-progress-fill" id="speedFill"></div>
+                </div>
+                <div class="speed-stats-row mt-4">
+                    <div>
+                        <span class="lbl">Ping</span>
+                        <span class="val text-success" id="speedPing">-- ms</span>
+                    </div>
+                    <div>
+                        <span class="lbl">Download</span>
+                        <span class="val text-accent" id="speedDown">-- Mbps</span>
+                    </div>
+                    <div>
+                        <span class="lbl">Upload</span>
+                        <span class="val" id="speedUp">-- Mbps</span>
+                    </div>
+                </div>
+                <button class="action-btn primary mt-4" id="btnStartSpeedtest" onclick="startSpeedtest()">🚀 Запустить Тест Скорости</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Deploy Fresh Panel -->
+    <div id="modalDeployPanel" class="modal-overlay">
+        <div class="modal-card glass">
+            <div class="modal-header">
+                <h3>🚀 Развернуть Свежую Панель Remnawave</h3>
+                <button class="close-btn" onclick="closeModal('modalDeployPanel')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="info-banner mb-3">
+                    ⚠️ <b>ТРЕБОВАНИЕ ПЕРЕД ДЕПЛОЕМ (DNS A-ЗАПИСИ):</b><br>
+                    Зайдите в Cloudflare или к вашему регистратору и направьте 2 A-записи на IP вашего VPS:<br>
+                    • <code>panel.domain.com</code> (или <code>pnl.domain.com</code>) ➔ <code>IP вашего VPS</code><br>
+                    • <code>sub.domain.com</code> (или <code>subscription.domain.com</code>) ➔ <code>IP вашего VPS</code><br>
+                    <small><i>(В Cloudflare ставьте ☁️ <b>Серые облачка (DNS Only / Proxied: OFF)</b>!)</i></small>
+                </div>
+                <div class="form-group">
+                    <label>IP-адрес VPS (Ubuntu/Debian)</label>
+                    <input type="text" id="panelIp" placeholder="192.168.1.1">
+                </div>
+                <div class="form-group">
+                    <label>Root-пароль VPS</label>
+                    <input type="password" id="panelPass" placeholder="••••••••">
+                </div>
+                <div class="form-group">
+                    <label>Домен для Панели (Пример: panel.mydomain.com)</label>
+                    <input type="text" id="panelDomain" placeholder="panel.mydomain.com">
+                </div>
+                <div class="form-group">
+                    <label>Домен для Подписок (Пример: sub.mydomain.com)</label>
+                    <input type="text" id="panelSubdomain" placeholder="sub.mydomain.com">
+                </div>
+                <div class="form-group checkbox-group mt-2">
+                    <label><input type="checkbox" id="panelHardenVps" checked> 🛡️ Применить SSH Харденинг VPS Панели (Порт 5422, Вход по ключу, Fail2ban)</label>
+                </div>
+                <button class="action-btn primary mt-3" onclick="submitDeployPanel()">🚀 Запустить 1-Click Деплой</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Connect Existing Panel -->
+    <div id="modalConnectExistingPanel" class="modal-overlay">
+        <div class="modal-card glass">
+            <div class="modal-header">
+                <h3>🔌 Подключить Существующую Панель</h3>
+                <button class="close-btn" onclick="closeModal('modalConnectExistingPanel')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="info-banner mb-3">
+                    📖 <b>КАК ПОЛУЧИТЬ API ТОКЕН B REMNAWAVE:</b><br>
+                    1. Зайдите в вашу панель Remnawave ➔ <b>⚙️ Настройки</b> ➔ <b>🔑 API Токены</b>.<br>
+                    2. Нажмите <b>«Создать токен»</b> (Create Token).<br>
+                    3. Скопируйте длинный токен и вставьте его в поле ниже!
+                </div>
+                <div class="form-group">
+                    <label>URL вашей панели (Пример: https://panel.mydomain.com)</label>
+                    <input type="text" id="existingPanelUrl" placeholder="https://panel.mydomain.com">
+                </div>
+                <div class="form-group">
+                    <label>API Bearer Token</label>
+                    <input type="password" id="existingPanelToken" placeholder="eyJhbGciOiJIUzI1NiI...">
+                </div>
+                <button class="action-btn primary mt-3" onclick="submitConnectExistingPanel()">🔌 Подключить Панель</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Deploy New Node -->
+    <div id="modalDeployNode" class="modal-overlay">
+        <div class="modal-card glass">
+            <div class="modal-header">
+                <h3>🖥️ Установка Новой Ноды</h3>
+                <button class="close-btn" onclick="closeModal('modalDeployNode')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>IP-адрес сервака ноды</label>
+                    <input type="text" id="nodeIp" placeholder="45.12.34.56">
+                </div>
+                <div class="form-group">
+                    <label>Root-пароль VPS</label>
+                    <input type="password" id="nodePass" placeholder="••••••••">
+                </div>
+                
+                <!-- Searchable Country Dropdown (Remnawave Style) -->
+                <div class="form-group relative">
+                    <label>Страна ноды (Поиск по названию или ISO коду)</label>
+                    <input type="text" id="countrySearchInput" placeholder="🔍 Введите: rus, nl, де, германия..." oninput="filterCountries()" onfocus="showCountryDropdown()">
+                    <input type="hidden" id="selectedCountryCode" value="NL">
+                    <div id="countryDropdownList" class="country-dropdown-list glass"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>Маскировочный SNI-домен</label>
+                    <input type="text" id="nodeDomain" placeholder="madrid.com">
+                </div>
+                <button class="action-btn primary mt-3" onclick="submitDeployNode()">🖥️ Установить Ноду</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: SSH Hardening -->
+    <div id="modalSshHardening" class="modal-overlay">
+        <div class="modal-card glass">
+            <div class="modal-header">
+                <h3>🛡️ Усиление безопасности VPS (SSH Hardening)</h3>
+                <button class="close-btn" onclick="closeModal('modalSshHardening')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>IP-адрес VPS</label>
+                    <input type="text" id="hardenIp" placeholder="192.168.1.1">
+                </div>
+                <div class="form-group">
+                    <label>Текущий Root-пароль VPS</label>
+                    <input type="password" id="hardenPass" placeholder="••••••••">
+                </div>
+                <div class="form-group">
+                    <label>Текущий порт SSH (дефолт 22)</label>
+                    <input type="number" id="hardenCurrentPort" value="22">
+                </div>
+                <div class="form-group">
+                    <label>Новый безопасный порт SSH (По умолчанию 5422)</label>
+                    <input type="number" id="hardenNewPort" value="5422" placeholder="5422">
+                </div>
+                <div class="form-group checkbox-group mt-2">
+                    <label><input type="checkbox" id="hardenInstallCrowdsec" checked> 🛡️ Установить Fail2ban (защита от брутфорса)</label>
+                </div>
+                <div class="form-group checkbox-group">
+                    <label><input type="checkbox" id="hardenDisablePass" checked> 🔑 Отключить вход по паролю (Только SSH-ключ)</label>
+                </div>
+                <button class="action-btn primary mt-3" onclick="submitSshHardening()">🛡️ Применить SSH Защиту</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: SSH Key Vault -->
+    <div id="modalKeyVault" class="modal-overlay">
+        <div class="modal-card glass">
+            <div class="modal-header">
+                <h3>🔑 SSH Key Vault (Ключи Доступа)</h3>
+                <button class="close-btn" onclick="closeModal('modalKeyVault')">✕</button>
+            </div>
+            <div class="modal-body">
+                <p class="text-sm text-muted">Сохраните приватный ключ Ed25519. Вы можете скопировать его текстом или сохранить прямо на <b>Рабочий Стол (Desktop)</b>.</p>
+
+                <div class="form-group mt-2">
+                    <label>📁 Папка и Имя ключа (Авто-формирование команд):</label>
+                    <input type="text" id="kvCustomPathInput" value="Desktop/RemnaKeys/id_ed25519.pem" oninput="updateDynamicSshCommands()">
+                </div>
+
+                <div class="form-group mt-3">
+                    <label>💻 Команда для Windows PowerShell:</label>
+                    <div class="code-box" id="kvSshCmdWin">ssh -i "$env:USERPROFILE\Desktop\RemnaKeys\id_ed25519.pem" -p 5422 root@ip</div>
+                </div>
+
+                <div class="form-group mt-2">
+                    <label>🍏/🐧 Команда для macOS & Linux Terminal:</label>
+                    <div class="code-box" id="kvSshCmdUnix">ssh -i ~/Desktop/RemnaKeys/id_ed25519.pem -p 5422 root@ip</div>
+                </div>
+
+                <div class="form-group mt-3">
+                    <label>Приватный SSH Ключ (Ed25519):</label>
+                    <textarea id="kvPrivateKeyText" rows="5" readonly class="code-textarea" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea>
+                </div>
+
+                <div class="btn-group mt-3">
+                    <button class="action-btn primary" onclick="copyKeyVaultText()">📋 Скопировать Текст Ключа</button>
+                    <button class="action-btn secondary" onclick="downloadKeyVaultPemFile()">💾 Сохранить Ключ на Рабочий Стол</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

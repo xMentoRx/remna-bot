@@ -1,0 +1,36 @@
+# Environment & Secrets
+.env
+.env.local
+
+# Runtime Data & SSH Key Vault
+data/*.json
+data/*.pem
+data/keys/
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+
+# Virtual Environments
+venv/
+.venv/
+env/
+
+# Chat Exports & Internal Logs
+ChatExport_*
+планы по ремна-тг*.md
+ремна-бот*.md
+PROJECT_SUMMARY.md
+*.tmp.md
+
+
+# IDE & OS Files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
