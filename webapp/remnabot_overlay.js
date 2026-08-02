@@ -636,8 +636,8 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                     <div class="remna-form-group">
                         <label>🏳️ Страна размещения Ноды:</label>
                         <button type="button" class="country-picker-btn" onclick="window.RemnaOverlay.toggleCountryPicker()">
-                            <span>${selectedCountry.flag} ${selectedCountry.name} (${selectedCountry.nameRu})</span>
-                            <span style="color:#818cf8; font-size:12px;">${isCountryPickerOpen ? '▲ Скрыть' : '▼ Выбрать страну'}</span>
+                            <span id="countryPickerBtnText">${selectedCountry.flag} ${selectedCountry.name} (${selectedCountry.nameRu})</span>
+                            <span id="countryPickerLabel" style="color:#818cf8; font-size:12px;">${isCountryPickerOpen ? '▲ Скрыть' : '▼ Выбрать страну'}</span>
                         </button>
                         <div id="countryPickerContainer" style="display:${isCountryPickerOpen ? 'block' : 'none'}; margin-top:8px;">
                             <input type="text" id="countrySearchInput" class="remna-input" placeholder="🔍 Введите название (e.g. Germany, Finland, Netherlands...)" oninput="window.RemnaOverlay.filterCountries(this.value)" style="margin-bottom:6px; font-size:12px;">
@@ -680,9 +680,18 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
 
         toggleCountryPicker: function() {
             isCountryPickerOpen = !isCountryPickerOpen;
-            const body = document.getElementById("remnaTabBody");
-            if (body) body.innerHTML = this.getTabHtml('node');
-            if (isCountryPickerOpen) this.renderCountryList();
+            const picker = document.getElementById("countryPickerContainer");
+            const labelSpan = document.getElementById("countryPickerLabel");
+
+            if (picker) {
+                picker.style.display = isCountryPickerOpen ? "block" : "none";
+            }
+            if (labelSpan) {
+                labelSpan.innerText = isCountryPickerOpen ? "▲ Скрыть" : "▼ Выбрать страну";
+            }
+            if (isCountryPickerOpen) {
+                this.renderCountryList();
+            }
         },
 
         renderCountryList: function(filterText = "") {
@@ -722,12 +731,26 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
             if (found) {
                 selectedCountry = found;
                 isCountryPickerOpen = false;
+
+                const btnText = document.getElementById("countryPickerBtnText");
+                if (btnText) {
+                    btnText.innerText = `${found.flag} ${found.name} (${found.nameRu})`;
+                }
+
+                const labelSpan = document.getElementById("countryPickerLabel");
+                if (labelSpan) {
+                    labelSpan.innerText = "▼ Выбрать страну";
+                }
+
+                const picker = document.getElementById("countryPickerContainer");
+                if (picker) {
+                    picker.style.display = "none";
+                }
+
                 const nameInput = document.getElementById("nodeNameInput");
                 if (nameInput) {
                     nameInput.value = `${found.flag} ${found.name}`;
                 }
-                const body = document.getElementById("remnaTabBody");
-                if (body) body.innerHTML = this.getTabHtml('node');
             }
         },
 
