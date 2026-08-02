@@ -8,6 +8,7 @@ from aiogram.types import WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup
 
 from config import BOT_TOKEN, ADMIN_IDS, API_URL, API_TOKEN, save_settings
 from services.remnawave_api import RemnawaveAPIAdapter
+from services.panel_deployer import deploy_fresh_panel_async
 
 logger = logging.getLogger("remna-bot.onboarding")
 router = Router(name="onboarding_router")
@@ -16,16 +17,23 @@ class OnboardingStates(StatesGroup):
     waiting_for_url = State()
     waiting_for_token = State()
 
+class PanelDeployStates(StatesGroup):
+    waiting_for_ip = State()
+    waiting_for_pass = State()
+    waiting_for_panel_domain = State()
+    waiting_for_sub_domain = State()
+
 def is_admin(user_id: int) -> bool:
     return not ADMIN_IDS or user_id in ADMIN_IDS
 
 def get_mini_app_keyboard(webapp_url: str = ""):
     kb = []
-    if webapp_url:
+    if webapp_url and webapp_url.startswith("https://"):
         kb.append([InlineKeyboardButton(text="📱 Открыть Remna-Bot MiniApp", web_app=WebAppInfo(url=webapp_url))])
+        kb.append([InlineKeyboardButton(text="⚙️ Подключить другую панель", callback_data="btn_connect_panel")])
     else:
-        # Fallback if local url is used
-        kb.append([InlineKeyboardButton(text="🚀 Запустить Remna-Bot MiniApp", callback_data="btn_open_app")])
+        kb.append([InlineKeyboardButton(text="🚀 1-Click Деплой Свежей Панели", callback_data="btn_deploy_panel_wiz")])
+        kb.append([InlineKeyboardButton(text="🔌 Подключить имеющуюся панель", callback_data="btn_connect_panel")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 @router.message(Command("start"))
@@ -34,6 +42,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
         await message.answer("❌ Доступ запрещен. Ваш ID не находится в списке ADMIN_CHAT_IDS.")
         return
 
+    await state.clear()
     current_url = API_URL
     current_token = API_TOKEN
 
@@ -42,22 +51,36 @@ async def cmd_start(message: types.Message, state: FSMContext):
         if await adapter.check_connection():
             ver = await adapter.detect_version()
             await message.answer(
-                f"🚀 **Remna-Bot MiniApp готов к работе!**\n\n"
+                f"🚀 **Remna-Bot подключен и готов к работе!**\n\n"
                 f"🔗 **Панель:** `{current_url}`\n"
                 f"⚡ **Версия:** `{ver}`\n"
                 f"🟢 **Статус:** Связь активна\n\n"
-                f"Нажмите кнопку ниже для открытия интерфейса:",
-                reply_markup=get_mini_app_keyboard(),
+                f"Выберите действие ниже:",
+                reply_markup=get_mini_app_keyboard(current_url),
                 parse_mode="Markdown"
             )
             return
 
     await message.answer(
         "👋 **Приветствуем в Remna-Bot!**\n\n"
-        "Панель еще не привязана. Нажмите кнопку ниже, чтобы открыть MiniApp и развернуть новую панель или подключить существующую в 1 клик!",
+        "Панель еще не привязана. Нажмите кнопку ниже, чтобы развернуть новую панель на чистый VPS или подключить существующую в 1 клик!",
         reply_markup=get_mini_app_keyboard(),
         parse_mode="Markdown"
     )
+
+@router.callback_query(F.data == "btn_open_app")
+async def cb_open_app(callback: types.CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await callback.message.edit_text(
+        "👋 **Панель управления Remna-Bot**\n\n"
+        "Выберите необходимое действие:\n"
+        "1️⃣ **🚀 1-Click Деплой Свежей Панели** — Автоматическая установка Docker, PostgreSQL 16, Remnawave Backend и Caddy SSL на чистый VPS.\n"
+        "2️⃣ **🔌 Подключить имеющуюся панель** — Ввод URL и API Bearer Token уже существующей панели.",
+        reply_markup=get_mini_app_keyboard(),
+        parse_mode="Markdown"
+    )
+
+# --- 🔌 Подключение существующей панели ---
 
 @router.callback_query(F.data == "btn_connect_panel")
 async def start_panel_connection(callback: types.CallbackQuery, state: FSMContext):
@@ -95,10 +118,101 @@ async def process_token_input(message: types.Message, state: FSMContext):
             f"🎉 **Панель успешно подключена!**\n\n"
             f"🔗 **URL:** `{url}`\n"
             f"⚡ **Версия Remnawave:** `{ver}`\n\n"
-            f"Нажмите кнопку ниже для запуска MiniApp:",
-            reply_markup=get_mini_app_keyboard(),
+            f"Нажмите кнопку ниже для управления:",
+            reply_markup=get_mini_app_keyboard(url),
             parse_mode="Markdown"
         )
     else:
         await msg.edit_text("❌ **Ошибка подключения!** Проверьте URL и API токен.")
+
+# --- 🚀 1-Click Деплой Свежей Панели через Telegram ---
+
+@router.callback_query(F.data == "btn_deploy_panel_wiz")
+async def start_panel_deploy_wizard(callback: types.CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await callback.message.edit_text(
+        "🚀 **1-Click Развертывание Свежей Панели Remnawave**\n\n"
+        "Шаг 1 из 4: Отправьте **IP-адрес чистого VPS** (Ubuntu 22.04 / 24.04):",
+        parse_mode="Markdown"
+    )
+    await state.set_state(PanelDeployStates.waiting_for_ip)
+
+@router.message(PanelDeployStates.waiting_for_ip)
+async def process_deploy_ip(message: types.Message, state: FSMContext):
+    ip = message.text.strip()
+    await state.update_data(ip=ip)
+    await message.answer("🔑 Шаг 2 из 4: Отправьте **Root-пароль** от этого VPS:")
+    await state.set_state(PanelDeployStates.waiting_for_pass)
+
+@router.message(PanelDeployStates.waiting_for_pass)
+async def process_deploy_pass(message: types.Message, state: FSMContext):
+    password = message.text.strip()
+    await state.update_data(password=password)
+    await message.answer(
+        "🌐 Шаг 3 из 4: Отправьте **Основной Домен Панели** (например `panel.domain.com`):\n\n"
+        "⚠️ *Убедитесь, что заранее создали A-запись на IP сервера!*"
+    )
+    await state.set_state(PanelDeployStates.waiting_for_panel_domain)
+
+@router.message(PanelDeployStates.waiting_for_panel_domain)
+async def process_deploy_panel_domain(message: types.Message, state: FSMContext):
+    panel_domain = message.text.strip().lower()
+    await state.update_data(panel_domain=panel_domain)
+    await message.answer(
+        "🔗 Шаг 4 из 4: Отправьте **Домен подписок / Webhook** (например `sub.domain.com`):\n\n"
+        "⚠️ *A-запись этого домена также должна указывать на IP сервера!*"
+    )
+    await state.set_state(PanelDeployStates.waiting_for_sub_domain)
+
+@router.message(PanelDeployStates.waiting_for_sub_domain)
+async def process_deploy_sub_domain(message: types.Message, state: FSMContext):
+    sub_domain = message.text.strip().lower()
+    data = await state.get_data()
+    await state.clear()
+
+    ip = data.get("ip")
+    password = data.get("password")
+    panel_domain = data.get("panel_domain")
+
+    status_msg = await message.answer("🛠 **Инициализация установки Панели...**")
+
+    def progress_callback(update_text: str):
+        try:
+            asyncio.run_coroutine_threadsafe(
+                status_msg.edit_text(f"🛠 **Процесс установки Панели:**\n\n{update_text}", parse_mode="Markdown"),
+                asyncio.get_event_loop()
+            )
+        except Exception as e:
+            logger.debug(f"Progress edit failed: {e}")
+
+    result = await deploy_fresh_panel_async(
+        host=ip,
+        password=password,
+        panel_domain=panel_domain,
+        sub_domain=sub_domain,
+        harden_vps=True,
+        progress_cb=progress_callback
+    )
+
+    if result.get("success"):
+        panel_url = f"https://{panel_domain}"
+        admin_pass = result.get("admin_password", "")
+        token = result.get("token", "")
+        if token:
+            save_settings(panel_url, token)
+
+        await status_msg.edit_text(
+            f"🎉 **Панель Remnawave успешно развернута!**\n\n"
+            f"🌐 **URL Панели:** `{panel_url}`\n"
+            f"👤 **Логин:** `admin`\n"
+            f"🔑 **Пароль:** `{admin_pass}`\n\n"
+            f"🔒 **SSH Порт VPS изменен на 5422** для защиты от брутфорса!\n\n"
+            f"Нажмите кнопку ниже для управления нодами и сквадами:",
+            reply_markup=get_mini_app_keyboard(panel_url),
+            parse_mode="Markdown"
+        )
+    else:
+        err = result.get("error", "Неизвестная ошибка")
+        await status_msg.edit_text(f"❌ **Ошибка установки Панели:**\n\n{err}", parse_mode="Markdown")
+
 
