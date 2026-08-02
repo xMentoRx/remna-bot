@@ -24,25 +24,24 @@ echo -e "${YELLOW}📦 Проверка и установка системных
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y && apt-get install -y --no-install-recommends curl ca-certificates nano git 2>/dev/null || true
 
-# Определяем директорию установки (текущую, если запущены из папки репозитория, или создаем ./remna-bot)
-if [ -f "./docker-compose.yml" ]; then
-    INSTALL_DIR="$(pwd)"
-elif [ -d "remna-bot" ]; then
-    INSTALL_DIR="$(pwd)/remna-bot"
-    cd "$INSTALL_DIR"
-    echo -e "${YELLOW}🔄 Обновление исходного кода в ${INSTALL_DIR}...${NC}"
-    git pull 2>/dev/null || true
-else
-    echo -e "${YELLOW}📥 Клонирование репозитория remna-bot...${NC}"
-    git clone https://github.com/xMentoRx/remna-bot.git remna-bot
-    cd remna-bot
-    INSTALL_DIR="$(pwd)"
+# Гарантированная директория установки: /opt/remna-bot
+INSTALL_DIR="/opt/remna-bot"
+
+if [ ! -d "$INSTALL_DIR" ]; then
+    echo -e "${YELLOW}📥 Создание папки ${INSTALL_DIR} и клонирование репозитория...${NC}"
+    mkdir -p "$INSTALL_DIR"
+    git clone https://github.com/xMentoRx/remna-bot.git "$INSTALL_DIR"
+elif [ ! -f "$INSTALL_DIR/docker-compose.yml" ]; then
+    echo -e "${YELLOW}📥 Клонирование репозитория в ${INSTALL_DIR}...${NC}"
+    git clone https://github.com/xMentoRx/remna-bot.git "$INSTALL_DIR"
 fi
 
-# Если .env остался в родительской папке от предыдущего запуска — переносим его внутрь папки бота
-if [ -f "../.env" ] && [ ! -f "$INSTALL_DIR/.env" ]; then
+cd "$INSTALL_DIR"
+
+# Если .env остался в родительской/рутовой папке от предыдущего запуска — переносим его в /opt/remna-bot/.env
+if [ -f "/root/.env" ] && [ ! -f "$INSTALL_DIR/.env" ]; then
     echo -e "${GREEN}🚚 Перенос имеющегося .env в ${INSTALL_DIR}/.env${NC}"
-    mv ../.env "$INSTALL_DIR/.env" 2>/dev/null || true
+    mv /root/.env "$INSTALL_DIR/.env" 2>/dev/null || true
 fi
 
 if [ ! -f "$INSTALL_DIR/.env" ]; then
