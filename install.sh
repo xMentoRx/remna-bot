@@ -24,18 +24,28 @@ echo -e "${YELLOW}📦 Проверка и установка системных
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y && apt-get install -y --no-install-recommends curl ca-certificates nano git 2>/dev/null || true
 
-INSTALL_DIR="$(pwd)"
-
-if [ ! -f "$INSTALL_DIR/docker-compose.yml" ]; then
-    echo -e "${YELLOW}📥 Клонирование репозитория remna-bot...${NC}"
-    if [ -d "$INSTALL_DIR/remna-bot" ]; then
-        cd "$INSTALL_DIR/remna-bot" && git pull
-    else
-        git clone https://github.com/xMentoRx/remna-bot.git "$INSTALL_DIR/remna-bot"
-        cd "$INSTALL_DIR/remna-bot"
-    fi
+# Определяем директорию установки (/opt/remna-bot или текущую, если запущены из клона)
+if [ -f "./docker-compose.yml" ]; then
     INSTALL_DIR="$(pwd)"
+elif [ -d "/opt/remna-bot" ]; then
+    INSTALL_DIR="/opt/remna-bot"
+    cd "$INSTALL_DIR"
+    echo -e "${YELLOW}🔄 Обновление исходного кода в ${INSTALL_DIR}...${NC}"
+    git pull 2>/dev/null || true
+else
+    INSTALL_DIR="/opt/remna-bot"
+    echo -e "${YELLOW}📥 Клонирование репозитория remna-bot в ${INSTALL_DIR}...${NC}"
+    git clone https://github.com/xMentoRx/remna-bot.git "$INSTALL_DIR"
+    cd "$INSTALL_DIR"
 fi
+
+# Если .env остался в /root от предыдущей попытки — переносим его в папку бота
+if [ -f "/root/.env" ] && [ ! -f "$INSTALL_DIR/.env" ]; then
+    echo -e "${GREEN}🚚 Перенос имеющегося .env в ${INSTALL_DIR}/.env${NC}"
+    mv /root/.env "$INSTALL_DIR/.env"
+fi
+
+if [ ! -f "$INSTALL_DIR/.env" ]; then
     echo -e "${YELLOW}📝 Заполнение конфигурации бота:${NC}"
     echo ""
     read -p "1. Введите Telegram Bot Token (от @BotFather) [Обязательно]: " BOT_TOKEN
@@ -95,9 +105,10 @@ if ! command -v docker &> /dev/null; then
     systemctl enable --now docker
 fi
 
-echo -e "${YELLOW}🚀 Запуск контейнера remna-bot...${NC}"
-docker compose up -d --build || docker-compose up -d --build
+echo -e "${YELLOW}🚀 Запуск контейнера remna-bot в ${INSTALL_DIR}...${NC}"
+cd "$INSTALL_DIR"
+docker compose up -d --build 2>/dev/null || docker-compose up -d --build
 
 echo -e "${CYAN}========================================================================${NC}"
-echo -e "${GREEN}🎉 remna-bot запущен! Теперь откройте бота в Telegram и отправьте /start${NC}"
+echo -e "${GREEN}🎉 remna-bot запущен в ${INSTALL_DIR}! Теперь откройте бота в Telegram и отправьте /start${NC}"
 echo -e "${CYAN}========================================================================${NC}"
