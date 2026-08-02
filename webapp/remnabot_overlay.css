@@ -1,51 +1,74 @@
-/* Remna-Bot Floating Overlay Bar & Custom Themes */
-:root {
-    --remna-primary: #6366f1;
-    --remna-accent: #06b6d4;
-    --remna-bg: #0b0f19;
+/* Remna-Bot Floating Overlay Bar & Responsive UX System */
+
+/* Enforce bottom padding on Remnawave body & main containers so overlay bar NEVER covers content */
+html, body, #app, #root, main, [class*="main"], .layout, .page-wrapper {
+    padding-bottom: 90px !important;
 }
 
 /* Floating Remna-Bot Toolbar */
 #remnabot-overlay-bar {
     position: fixed;
-    top: 10px;
-    right: 12px;
+    bottom: 16px;
+    right: 16px;
     z-index: 999999;
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    background: rgba(15, 23, 42, 0.88);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 20px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    gap: 8px;
+    padding: 8px 14px;
+    background: rgba(11, 15, 25, 0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 24px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65), 0 0 20px rgba(99, 102, 241, 0.25);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
     -webkit-tap-highlight-color: transparent;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#remnabot-overlay-bar.minimized {
+    padding: 6px 12px;
+    border-radius: 20px;
+    width: auto !important;
+    max-width: fit-content !important;
+    transform: none !important;
+    left: auto !important;
+    right: 16px !important;
+    bottom: 16px !important;
 }
 
 #remnabot-overlay-bar .logo-badge {
     font-size: 12px;
     font-weight: 800;
-    background: linear-gradient(135deg, #6366f1, #06b6d4);
+    background: linear-gradient(135deg, #818cf8, #06b6d4);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     margin-right: 4px;
     white-space: nowrap;
+    cursor: pointer;
 }
 
 #remnabot-overlay-bar .overlay-btn {
-    padding: 6px 10px;
-    border-radius: 10px;
-    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 7px 12px;
+    border-radius: 12px;
+    font-size: 12px;
     font-weight: 600;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.08);
-    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.07);
+    color: #f3f4f6;
     cursor: pointer;
     white-space: nowrap;
-    transition: transform 0.15s ease, background 0.2s ease;
+    transition: all 0.2s ease;
+}
+
+#remnabot-overlay-bar .overlay-btn:hover {
+    background: rgba(99, 102, 241, 0.25);
+    border-color: rgba(129, 140, 248, 0.5);
+    transform: translateY(-1px);
 }
 
 #remnabot-overlay-bar .overlay-btn:active {
@@ -53,18 +76,37 @@
     background: rgba(99, 102, 241, 0.4);
 }
 
-/* Mobile Responsive Optimization (iOS / Android in Telegram) */
-@media (max-width: 600px) {
+#remnabot-overlay-bar .minimize-btn {
+    padding: 4px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #9ca3af;
+    cursor: pointer;
+}
+
+#remnabot-overlay-bar .minimize-btn:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* Mobile Responsive Optimization */
+@media (max-width: 650px) {
+    html, body, #app, #root, main, [class*="main"] {
+        padding-bottom: 95px !important;
+    }
+
     #remnabot-overlay-bar {
-        top: auto;
-        bottom: 16px;
-        right: 50%;
-        transform: translateX(50%);
-        width: calc(100% - 32px);
-        max-width: 380px;
-        justify-content: space-around;
-        padding: 8px 10px;
-        border-radius: 25px;
+        bottom: 12px;
+        left: 50% !important;
+        right: auto !important;
+        transform: translateX(-50%);
+        width: calc(100% - 24px);
+        max-width: 440px;
+        justify-content: space-between;
+        padding: 6px 8px;
+        border-radius: 20px;
     }
 
     #remnabot-overlay-bar .logo-badge {
@@ -72,34 +114,62 @@
     }
 
     #remnabot-overlay-bar .overlay-btn {
-        padding: 8px 10px;
+        padding: 7px 8px;
         font-size: 11px;
         flex: 1;
         text-align: center;
     }
+
+    #remnabot-overlay-bar.minimized {
+        left: auto !important;
+        right: 12px !important;
+        bottom: 12px !important;
+        transform: none !important;
+    }
 }
 
-/* Theme Presets overrides injected into Remnawave UI */
-body.theme-cyberpunk {
-    --bg-primary: #0b0f19 !important;
-    --card-bg: rgba(15, 23, 42, 0.8) !important;
-    --accent-color: #6366f1 !important;
+/* --- Remnawave Live Theme Presets (HSL Variables Overrides) --- */
+
+/* Theme 1: Cyberpunk Neon */
+body.theme-cyberpunk, body.theme-cyberpunk * {
+    --primary: 280 100% 65% !important;
+    --background: 270 50% 6% !important;
+    --card: 270 40% 10% !important;
+    --border: 280 40% 20% !important;
+    --foreground: 0 0% 98% !important;
+    --muted: 270 30% 20% !important;
+    --accent: 320 100% 60% !important;
 }
 
-body.theme-emerald {
-    --bg-primary: #061712 !important;
-    --card-bg: rgba(6, 23, 18, 0.8) !important;
-    --accent-color: #10b981 !important;
+/* Theme 2: Emerald Matrix */
+body.theme-emerald, body.theme-emerald * {
+    --primary: 158 84% 48% !important;
+    --background: 160 50% 5% !important;
+    --card: 160 40% 9% !important;
+    --border: 160 30% 18% !important;
+    --foreground: 0 0% 98% !important;
+    --muted: 160 30% 18% !important;
+    --accent: 140 100% 50% !important;
 }
 
-body.theme-sunset {
-    --bg-primary: #1a0c0c !important;
-    --card-bg: rgba(26, 12, 12, 0.8) !important;
-    --accent-color: #f59e0b !important;
+/* Theme 3: Sunset Orange */
+body.theme-sunset, body.theme-sunset * {
+    --primary: 25 95% 53% !important;
+    --background: 20 40% 6% !important;
+    --card: 20 35% 10% !important;
+    --border: 25 40% 20% !important;
+    --foreground: 0 0% 98% !important;
+    --muted: 20 30% 20% !important;
+    --accent: 350 90% 60% !important;
 }
 
-body.theme-midnight {
-    --bg-primary: #050b14 !important;
-    --card-bg: rgba(5, 11, 20, 0.8) !important;
-    --accent-color: #3b82f6 !important;
+/* Theme 4: OLED Pure Black */
+body.theme-oled, body.theme-oled * {
+    --primary: 210 100% 55% !important;
+    --background: 0 0% 0% !important;
+    --card: 0 0% 6% !important;
+    --border: 0 0% 16% !important;
+    --foreground: 0 0% 100% !important;
+    --muted: 0 0% 15% !important;
+    --accent: 210 100% 50% !important;
 }
