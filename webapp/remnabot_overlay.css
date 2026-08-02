@@ -5,6 +5,28 @@ html, body, #app, #root, main, [class*="main"], .layout, .page-wrapper {
     padding-bottom: 95px !important;
 }
 
+/* Sidebar Custom Injected Menu Item */
+.remna-sidebar-link {
+    display: flex !important;
+    align-items: center !important;
+    padding: 10px 14px !important;
+    margin: 6px 8px !important;
+    border-radius: 14px !important;
+    background: rgba(99, 102, 241, 0.12) !important;
+    border: 1px solid rgba(129, 140, 248, 0.3) !important;
+    color: #ffffff !important;
+    text-decoration: none !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+.remna-sidebar-link:hover {
+    background: rgba(99, 102, 241, 0.28) !important;
+    border-color: rgba(129, 140, 248, 0.6) !important;
+    transform: translateX(3px) !important;
+}
+
 /* Floating Remna-Bot Toolbar */
 #remnabot-overlay-bar {
     position: fixed;
@@ -91,7 +113,7 @@ html, body, #app, #root, main, [class*="main"], .layout, .page-wrapper {
     background: rgba(255, 255, 255, 0.15);
 }
 
-/* Mobile Responsive Optimization - Horizontal Touch Scrollable Pill Bar */
+/* Mobile Responsive Optimization - Touch Scrollable Pill Bar */
 @media (max-width: 650px) {
     html, body, #app, #root, main, [class*="main"] {
         padding-bottom: 100px !important;
@@ -135,15 +157,15 @@ html, body, #app, #root, main, [class*="main"], .layout, .page-wrapper {
     }
 }
 
-/* --- Remna-Bot Overlay Modals System --- */
+/* --- Remna-Bot Control Center Modal System --- */
 .remna-modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(12px);
     z-index: 1000000;
     display: flex;
     align-items: center;
@@ -163,18 +185,18 @@ html, body, #app, #root, main, [class*="main"], .layout, .page-wrapper {
     border: 1px solid rgba(255, 255, 255, 0.16);
     border-radius: 24px;
     width: 100%;
-    max-width: 480px;
+    max-width: 520px;
     padding: 24px;
     color: #f8fafc;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(99, 102, 241, 0.2);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85), 0 0 35px rgba(99, 102, 241, 0.25);
     position: relative;
     max-height: 90vh;
     overflow-y: auto;
 }
 
 .remna-modal-card h3 {
-    margin: 0 0 12px 0;
-    font-size: 18px;
+    margin: 0 0 16px 0;
+    font-size: 19px;
     font-weight: 700;
     color: #ffffff;
     display: flex;
@@ -203,6 +225,70 @@ html, body, #app, #root, main, [class*="main"], .layout, .page-wrapper {
 .remna-modal-close:hover {
     color: #ffffff;
     background: rgba(239, 68, 68, 0.3);
+}
+
+.remna-tab-nav {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 18px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+}
+
+.remna-tab-btn {
+    padding: 7px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.remna-tab-btn.active {
+    background: rgba(99, 102, 241, 0.28);
+    border-color: rgba(129, 140, 248, 0.6);
+    color: #ffffff;
+}
+
+.theme-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.theme-card {
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.theme-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(129, 140, 248, 0.5);
+    background: rgba(99, 102, 241, 0.15);
+}
+
+.theme-card.active {
+    border-color: #818cf8;
+    background: rgba(99, 102, 241, 0.25);
+    box-shadow: 0 0 12px rgba(129, 140, 248, 0.4);
+}
+
+.theme-card .preview-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    margin: 0 auto 8px auto;
 }
 
 .remna-form-group {
@@ -256,7 +342,9 @@ html, body, #app, #root, main, [class*="main"], .layout, .page-wrapper {
     transform: scale(0.98);
 }
 
-/* Remnawave Live Theme Presets */
+/* --- Remnawave Live Theme Presets --- */
+
+/* Theme: Cyberpunk Neon */
 body.theme-cyberpunk, body.theme-cyberpunk * {
     --primary: 280 100% 65% !important;
     --background: 270 50% 6% !important;
@@ -266,6 +354,7 @@ body.theme-cyberpunk, body.theme-cyberpunk * {
     --accent: 320 100% 60% !important;
 }
 
+/* Theme: Emerald Matrix */
 body.theme-emerald, body.theme-emerald * {
     --primary: 158 84% 48% !important;
     --background: 160 50% 5% !important;
@@ -275,6 +364,7 @@ body.theme-emerald, body.theme-emerald * {
     --accent: 140 100% 50% !important;
 }
 
+/* Theme: Sunset Orange */
 body.theme-sunset, body.theme-sunset * {
     --primary: 25 95% 53% !important;
     --background: 20 40% 6% !important;
@@ -284,6 +374,7 @@ body.theme-sunset, body.theme-sunset * {
     --accent: 350 90% 60% !important;
 }
 
+/* Theme: OLED Pure Black */
 body.theme-oled, body.theme-oled * {
     --primary: 210 100% 55% !important;
     --background: 0 0% 0% !important;
