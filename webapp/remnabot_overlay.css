@@ -270,6 +270,56 @@ html, body, #app, #root, main, [class*="main"], .layout, .page-wrapper {
     color: #ffffff;
 }
 
+/* Country Picker Styles */
+.country-picker-btn {
+    width: 100%;
+    padding: 10px 14px;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.country-picker-btn:hover {
+    border-color: #818cf8;
+    background: rgba(99, 102, 241, 0.15);
+}
+
+.country-list-container {
+    max-height: 240px;
+    overflow-y: auto;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(15, 23, 42, 0.95);
+    margin-top: 8px;
+    padding: 6px;
+}
+
+.country-item {
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #cbd5e1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.country-item:hover {
+    background: rgba(99, 102, 241, 0.3);
+    color: #ffffff;
+}
+
 /* Bedolaga-Style Customization Grid Layout */
 .section-title {
     font-size: 13px;
@@ -407,7 +457,7 @@ html, body, #app, #root, main, [class*="main"], .layout, .page-wrapper {
 }
 
 /* ==========================================================================
-   SEMI-TRANSPARENT GLASSMORPHISM RECOLORING ENGINE (Allows Canvas FX to show through)
+   SEMI-TRANSPARENT GLASSMORPHISM RECOLORING ENGINE
    ========================================================================== */
 
 /* 1. Cyberpunk Neon */

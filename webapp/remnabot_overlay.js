@@ -22,6 +22,42 @@
         { id: "fx-snow", name: "Snowfall ❄️" }
     ];
 
+    const countriesList = [
+        { code: "AT", name: "Austria", flag: "🇦🇹", nameRu: "Австрия" },
+        { code: "BE", name: "Belgium", flag: "🇧🇪", nameRu: "Бельгия" },
+        { code: "BG", name: "Bulgaria", flag: "🇧🇬", nameRu: "Болгария" },
+        { code: "CA", name: "Canada", flag: "🇨🇦", nameRu: "Канада" },
+        { code: "CZ", name: "Czech Republic", flag: "🇨🇿", nameRu: "Чехия" },
+        { code: "DK", name: "Denmark", flag: "🇩🇰", nameRu: "Дания" },
+        { code: "EE", name: "Estonia", flag: "🇪🇪", nameRu: "Эстония" },
+        { code: "FI", name: "Finland", flag: "🇫🇮", nameRu: "Финляндия" },
+        { code: "FR", name: "France", flag: "🇫🇷", nameRu: "Франция" },
+        { code: "DE", name: "Germany", flag: "🇩🇪", nameRu: "Германия" },
+        { code: "GR", name: "Greece", flag: "🇬🇷", nameRu: "Греция" },
+        { code: "HU", name: "Hungary", flag: "🇭🇺", nameRu: "Венгрия" },
+        { code: "IS", name: "Iceland", flag: "🇮🇸", nameRu: "Исландия" },
+        { code: "IE", name: "Ireland", flag: "🇮🇪", nameRu: "Ирландия" },
+        { code: "IL", name: "Israel", flag: "🇮🇱", nameRu: "Израиль" },
+        { code: "IT", name: "Italy", flag: "🇮🇹", nameRu: "Италия" },
+        { code: "JP", name: "Japan", flag: "🇯🇵", nameRu: "Япония" },
+        { code: "LV", name: "Latvia", flag: "🇱🇻", nameRu: "Латвия" },
+        { code: "LT", name: "Lithuania", flag: "🇱🇹", nameRu: "Литва" },
+        { code: "MD", name: "Moldova", flag: "🇲🇩", nameRu: "Молдова" },
+        { code: "NL", name: "Netherlands", flag: "🇳🇱", nameRu: "Нидерланды" },
+        { code: "NO", name: "Norway", flag: "🇳🇴", nameRu: "Норвегия" },
+        { code: "PL", name: "Poland", flag: "🇵🇱", nameRu: "Польша" },
+        { code: "PT", name: "Portugal", flag: "🇵🇹", nameRu: "Португалия" },
+        { code: "RO", name: "Romania", flag: "🇷🇴", nameRu: "Румыния" },
+        { code: "SG", name: "Singapore", flag: "🇸🇬", nameRu: "Сингапур" },
+        { code: "SK", name: "Slovakia", flag: "🇸🇰", nameRu: "Словакия" },
+        { code: "ES", name: "Spain", flag: "🇪🇸", nameRu: "Испания" },
+        { code: "SE", name: "Sweden", flag: "🇸🇪", nameRu: "Швеция" },
+        { code: "CH", name: "Switzerland", flag: "🇨🇭", nameRu: "Швейцария" },
+        { code: "TR", name: "Turkey", flag: "🇹🇷", nameRu: "Турция" },
+        { code: "GB", name: "United Kingdom", flag: "🇬🇧", nameRu: "Великобритания" },
+        { code: "US", name: "United States", flag: "🇺🇸", nameRu: "США" }
+    ];
+
     let currentPreset = localStorage.getItem("remnabot_preset") || "preset-default";
     let currentFx = localStorage.getItem("remnabot_fx") || "fx-none";
     let customColors = JSON.parse(localStorage.getItem("remnabot_custom_colors") || "null");
@@ -29,6 +65,8 @@
     let animFrameId = null;
     let fetchedKeys = [];
     let selectedSshServer = null; // null = Server Grid View, object = Detailed Server SSH View
+    let selectedCountry = countriesList.find(c => c.code === "DE") || countriesList[0];
+    let isCountryPickerOpen = false;
 
     // --- Live Canvas Background FX Engine ---
     function initCanvasFx() {
@@ -444,6 +482,8 @@
                 this.loadSshKeys();
             } else if (activeTab === 'speed') {
                 this.startSpeedtestAnimation();
+            } else if (activeTab === 'node' && isCountryPickerOpen) {
+                this.renderCountryList();
             }
         },
 
@@ -458,6 +498,8 @@
                 this.loadSshKeys();
             } else if (tabName === 'speed') {
                 this.startSpeedtestAnimation();
+            } else if (tabName === 'node' && isCountryPickerOpen) {
+                this.renderCountryList();
             }
         },
 
@@ -568,7 +610,7 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                                     👑 Основной сервер Панели
                                 </div>
                                 <div style="font-size:11px; color:#94a3b8; margin-top:3px;">
-                                    IP: <b>${location.hostname || '177.1.202.124'}</b> | SSH Порт: <b style="color:#10b981;">5422 🔒</b>
+                                    IP: <b style="color:#38bdf8;">177.1.202.124</b> (${location.hostname}) | SSH Порт: <b style="color:#10b981;">5422 🔒</b>
                                 </div>
                             </div>
                             <button class="overlay-btn" style="background:rgba(99,102,241,0.3); border-color:rgba(129,140,248,0.6);">🔑 Ключи ➔</button>
@@ -592,8 +634,19 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                         <input type="text" id="nodeDomainInput" class="remna-input" value="sub.remna-bot.xyz" placeholder="sub.remna-bot.xyz">
                     </div>
                     <div class="remna-form-group">
-                        <label>Название Ноды (Например, 🇪🇺 Германия VLESS-Reality):</label>
-                        <input type="text" id="nodeNameInput" class="remna-input" value="🇪🇺 Германия VLESS-Reality">
+                        <label>🏳️ Страна размещения Ноды:</label>
+                        <button type="button" class="country-picker-btn" onclick="window.RemnaOverlay.toggleCountryPicker()">
+                            <span>${selectedCountry.flag} ${selectedCountry.name} (${selectedCountry.nameRu})</span>
+                            <span style="color:#818cf8; font-size:12px;">${isCountryPickerOpen ? '▲ Скрыть' : '▼ Выбрать страну'}</span>
+                        </button>
+                        <div id="countryPickerContainer" style="display:${isCountryPickerOpen ? 'block' : 'none'}; margin-top:8px;">
+                            <input type="text" id="countrySearchInput" class="remna-input" placeholder="🔍 Введите название (e.g. Germany, Finland, Netherlands...)" oninput="window.RemnaOverlay.filterCountries(this.value)" style="margin-bottom:6px; font-size:12px;">
+                            <div id="countryList" class="country-list-container"></div>
+                        </div>
+                    </div>
+                    <div class="remna-form-group">
+                        <label>Название Ноды:</label>
+                        <input type="text" id="nodeNameInput" class="remna-input" value="${selectedCountry.flag} ${selectedCountry.name} VLESS-Reality">
                     </div>
                     <button class="remna-btn-primary" onclick="window.RemnaOverlay.submitNodeDeploy()">🚀 Запустить 1-Click Развертывание Ноды</button>
                     <div id="nodeDeployLog" style="margin-top:12px; font-size:12px; color:#38bdf8;"></div>
@@ -623,6 +676,59 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                 `;
             }
             return '';
+        },
+
+        toggleCountryPicker: function() {
+            isCountryPickerOpen = !isCountryPickerOpen;
+            const body = document.getElementById("remnaTabBody");
+            if (body) body.innerHTML = this.getTabHtml('node');
+            if (isCountryPickerOpen) this.renderCountryList();
+        },
+
+        renderCountryList: function(filterText = "") {
+            const container = document.getElementById("countryList");
+            if (!container) return;
+
+            const q = filterText.toLowerCase().trim();
+            const filtered = countriesList.filter(c => 
+                c.name.toLowerCase().includes(q) || 
+                c.nameRu.toLowerCase().includes(q) || 
+                c.code.toLowerCase().includes(q)
+            );
+
+            let html = "";
+            filtered.forEach(c => {
+                const isSel = c.code === selectedCountry.code ? 'style="background:rgba(99,102,241,0.35); color:#ffffff;"' : '';
+                html += `
+                    <div class="country-item" ${isSel} onclick="window.RemnaOverlay.selectCountry('${c.code}')">
+                        <span style="font-size:18px;">${c.flag}</span>
+                        <span style="font-weight:700;">${c.name}</span>
+                        <span style="color:#94a3b8; font-size:11px;">(${c.nameRu})</span>
+                    </div>
+                `;
+            });
+            if (filtered.length === 0) {
+                html = '<div style="font-size:12px; color:#94a3b8; padding:10px; text-align:center;">Страна не найдена</div>';
+            }
+            container.innerHTML = html;
+        },
+
+        filterCountries: function(query) {
+            this.renderCountryList(query);
+        },
+
+        selectCountry: function(code) {
+            const found = countriesList.find(c => c.code === code);
+            if (found) {
+                selectedCountry = found;
+                isCountryPickerOpen = false;
+                const nameInput = document.getElementById("nodeNameInput");
+                if (nameInput) {
+                    nameInput.value = `${found.flag} ${found.name} VLESS-Reality`;
+                }
+                const body = document.getElementById("remnaTabBody");
+                if (body) body.innerHTML = this.getTabHtml('node');
+            }
         },
 
         loadSshKeys: function() {
@@ -756,6 +862,7 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
             const password = document.getElementById("nodePassInput").value.trim();
             const domain = document.getElementById("nodeDomainInput") ? document.getElementById("nodeDomainInput").value.trim() : "sub.remna-bot.xyz";
             const name = document.getElementById("nodeNameInput").value.trim();
+            const country = selectedCountry ? selectedCountry.code : "DE";
             const logDiv = document.getElementById("nodeDeployLog");
 
             if (!host || !password) {
@@ -763,12 +870,12 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                 return;
             }
 
-            logDiv.innerHTML = `⏳ <b>Развертывание VLESS-Reality ноды (${domain})...</b> Пожалуйста, подождите ~45 секунд.`;
+            logDiv.innerHTML = `⏳ <b>Развертывание VLESS-Reality ноды ${selectedCountry.flag} (${domain})...</b> Пожалуйста, подождите ~45 секунд.`;
 
             fetch('/api/deploy/node', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ host, password, domain, name })
+                body: JSON.stringify({ host, password, domain, name, country })
             })
             .then(r => r.json())
             .then(res => {
