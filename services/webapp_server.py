@@ -325,17 +325,27 @@ async def remna_embed_handler(request: web.Request) -> web.Response:
                     if "</head>" in html_content:
                         html_content = html_content.replace("</head>", injection, 1)
 
-                    return web.Response(text=html_content, content_type="text/html")
+                    return web.Response(
+                        text=html_content,
+                        content_type="text/html",
+                        headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
+                    )
     except Exception as e:
         logger.error(f"Failed to proxy Remnawave UI from {target_url}: {e}")
 
     webapp_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "webapp")
-    return web.FileResponse(os.path.join(webapp_dir, "index.html"))
+    return web.FileResponse(
+        os.path.join(webapp_dir, "index.html"),
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
+    )
 
 # --- WebApp Static Files Handler ---
 async def index_handler(request: web.Request) -> web.Response:
     webapp_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "webapp")
-    return web.FileResponse(os.path.join(webapp_dir, "index.html"))
+    return web.FileResponse(
+        os.path.join(webapp_dir, "index.html"),
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
+    )
 
 async def api_balancer_status_handler(request: web.Request) -> web.Response:
     adapter = get_api_adapter()
