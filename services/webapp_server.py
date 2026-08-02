@@ -315,7 +315,9 @@ async def remna_embed_handler(request: web.Request) -> web.Response:
                     html_content = await resp.text()
                     
                     # Inject Remna-Bot Overlay CSS & JS into official Remnawave UI <head>
-                    injection = """
+                    base_url = target_url.rstrip("/") + "/"
+                    injection = f"""
+                    <base href="{base_url}">
                     <link rel="stylesheet" href="/remnabot_overlay.css">
                     <script src="/remnabot_overlay.js" defer></script>
                     </head>
