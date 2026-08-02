@@ -145,11 +145,15 @@ def run_panel_ssh_install(
             "Обновление пакетов APT (Тихий режим без запросов Enter)"
         )
 
-        # 3. Non-interactive Docker Engine & Caddy
+        # 3. Non-interactive Docker Engine & Caddy SSL
         exec_cmd(
             "export DEBIAN_FRONTEND=noninteractive; export NEEDRESTART_MODE=a; "
             "command -v docker >/dev/null 2>&1 || (curl -fsSL https://get.docker.com | sh); "
-            "apt-get -o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold' -y install docker-compose-v2 caddy 2>/dev/null || true",
+            "apt-get -y install debian-keyring debian-archive-keyring apt-transport-https 2>/dev/null || true; "
+            "curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg 2>/dev/null || true; "
+            "curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list 2>/dev/null || true; "
+            "apt-get update -y 2>/dev/null || true; "
+            "apt-get -o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold' -y install docker-compose-v2 caddy",
             "Автоматическая установка Docker Engine & Caddy SSL"
         )
 
