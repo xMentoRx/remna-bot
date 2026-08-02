@@ -42,6 +42,7 @@ async def main():
     # 3. Start Telegram Bot Polling
     logger.info("🤖 Telegram Bot polling started. Press Ctrl+C to stop.")
     try:
+        await bot.delete_webhook(drop_pending_updates=True)
         await dp.start_polling(bot)
     finally:
         await bot.session.close()
