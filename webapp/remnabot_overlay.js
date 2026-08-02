@@ -223,6 +223,13 @@
         }
     }
 
+    function hexToRgba(hex, alpha = 0.7) {
+        hex = hex.replace("#", "");
+        if (hex.length === 3) hex = hex.split("").map(c => c + c).join("");
+        const num = parseInt(hex, 16);
+        return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`;
+    }
+
     // --- Dynamic Color Injection Engine ---
     function applyColorEngine() {
         let styleTag = document.getElementById("remnabot-custom-theme-style");
@@ -234,17 +241,22 @@
 
         let pObj = presets.find(p => p.id === currentPreset) || presets[0];
         let accent = customColors ? customColors.accent : pObj.accent;
-        let bg = customColors ? customColors.bg : pObj.bg;
-        let card = customColors ? customColors.card : pObj.card;
+        let bgHex = customColors ? customColors.bg : pObj.bg;
+        let cardHex = customColors ? customColors.card : pObj.card;
         let text = customColors ? customColors.text : pObj.text;
+
+        let bgRgba = hexToRgba(bgHex, 0.7);
+        let cardRgba = hexToRgba(cardHex, 0.65);
 
         styleTag.innerHTML = `
             body, html, #app, #root {
-                background-color: ${bg} !important;
+                background-color: ${bgRgba} !important;
                 color: ${text} !important;
             }
-            aside, nav, [class*="card"], [class*="panel"], [class*="drawer"], [class*="bg-slate"], [class*="bg-zinc"], [class*="bg-gray"], [class*="bg-dark"] {
-                background-color: ${card} !important;
+            aside, nav, [class*="card"], [class*="panel"], [class*="drawer"], [class*="bg-slate"], [class*="bg-zinc"], [class*="bg-gray"], [class*="bg-dark"], [class*="bg-[#"] {
+                background-color: ${cardRgba} !important;
+                backdrop-filter: blur(12px) !important;
+                -webkit-backdrop-filter: blur(12px) !important;
                 border-color: ${accent}35 !important;
             }
             [aria-current="page"], [class*="active"]:not(#remnabot-overlay-bar *):not(#remna-custom-modal *) {
