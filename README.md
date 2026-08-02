@@ -41,27 +41,46 @@
 
 ## 📦 Быстрый старт (Установка за 1 минуту)
 
-### 0️⃣ Подготовка нового VPS (1 команда)
-Если у вас голый Linux VPS (Ubuntu / Debian), подготовьте систему в 1 клик:
-```bash
-apt update && apt install -y curl nano git
-```
+### 0️⃣ Предварительная подготовка (перед запуском)
 
-### Вариант 1: Автоматический скрипт установки на VPS (Рекомендуется)
+1. **Создайте Telegram-бота через BotFather**:
+   - Перейдите к [@BotFather](https://t.me/BotFather) в Telegram.
+   - Отправьте команду `/newbot`, задайте имя и юзернейм для вашего бота.
+   - Скопируйте и сохраните **Bot Token** (формата `1234567890:ABCdefGHIjklMNOpqrsTUVwxyZ`).
 
-Запустите скрипт на вашем VPS:
+2. **Узнайте свой Telegram Admin ID**:
+   - Откройте бота [@userinfobot](https://t.me/userinfobot) или [@raw_data_bot](https://t.me/raw_data_bot) и скопируйте ваш числовой ID (например `123456789`).
+
+3. **Подготовьте чистый Linux VPS (Ubuntu / Debian)**:
+   ```bash
+   apt update && apt install -y curl nano git
+   ```
+
+---
+
+### 🚀 Установка на VPS (в 1 команду)
+
+Запустите автоматический инсталлятор на вашем VPS:
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/xMentoRx/remna-bot/main/install.sh)
 ```
 
-### Вариант 2: Запуск через Docker Compose
+При первом запуске скрипт в интерактивном диалоге попросит вас ввести:
+1. `Telegram Bot Token` (из @BotFather)
+2. `Telegram Admin ID` (ваш числовой ID или несколько через запятую)
+
+Скрипт автоматически сформирует `.env`, развернет Docker и запустит бота за пару секунд!
+
+---
+
+### Вариант 2: Запуск через Docker Compose (Вручную)
 
 ```bash
 git clone https://github.com/xMentoRx/remna-bot.git
 cd remna-bot
 cp .env.example .env
-# Укажите BOT_TOKEN и ADMIN_CHAT_IDS
+# Заполните BOT_TOKEN и ADMIN_CHAT_IDS
 nano .env
 docker compose up -d --build
 ```
