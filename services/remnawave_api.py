@@ -1,7 +1,7 @@
 import aiohttp
 import asyncio
 import logging
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 
 logger = logging.getLogger("remna-bot.api")
 
