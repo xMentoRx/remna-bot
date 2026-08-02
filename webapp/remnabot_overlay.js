@@ -27,6 +27,8 @@
     let customColors = JSON.parse(localStorage.getItem("remnabot_custom_colors") || "null");
     let isMinimized = false;
     let animFrameId = null;
+    let fetchedKeys = [];
+    let selectedSshServer = null; // null = Server Grid View, object = Detailed Server SSH View
 
     // --- Live Canvas Background FX Engine ---
     function initCanvasFx() {
@@ -53,7 +55,7 @@
             return;
         }
 
-        // --- FX Mode 1: Matrix Rain ---
+        // FX Mode 1: Matrix Rain
         if (currentFx === "fx-matrix") {
             const katakana = "アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン0123456789ABCDEF";
             const fontSize = 14;
@@ -80,7 +82,7 @@
             drawMatrix();
         }
 
-        // --- FX Mode 2: Starfield ---
+        // FX Mode 2: Starfield
         else if (currentFx === "fx-stars") {
             const stars = Array.from({ length: 150 }, () => ({
                 x: Math.random() * width - width / 2,
@@ -116,7 +118,7 @@
             drawStars();
         }
 
-        // --- FX Mode 3: Fireflies / Sparkles ---
+        // FX Mode 3: Fireflies / Sparkles
         else if (currentFx === "fx-sparkles") {
             const flies = Array.from({ length: 50 }, () => ({
                 x: Math.random() * width,
@@ -152,7 +154,7 @@
             drawFireflies();
         }
 
-        // --- FX Mode 4: Constellation ---
+        // FX Mode 4: Constellation
         else if (currentFx === "fx-constellation") {
             const nodes = Array.from({ length: 65 }, () => ({
                 x: Math.random() * width,
@@ -195,7 +197,7 @@
             drawConstellation();
         }
 
-        // --- FX Mode 5: Snowfall ---
+        // FX Mode 5: Snowfall
         else if (currentFx === "fx-snow") {
             const flakes = Array.from({ length: 80 }, () => ({
                 x: Math.random() * width,
@@ -434,6 +436,7 @@
         },
 
         switchTab: function(tabName) {
+            selectedSshServer = null; // reset SSH detail view on tab switch
             document.querySelectorAll(".remna-tab-btn").forEach(btn => btn.classList.remove("active"));
             if (event && event.target) event.target.classList.add("active");
             const body = document.getElementById("remnaTabBody");
@@ -470,7 +473,7 @@
                 });
                 presetHtml += '</div>';
 
-                // 3. Manual Custom Color Pickers (Bedolaga-Style)
+                // 3. Manual Custom Color Pickers
                 let customHtml = `
                     <div class="section-title">🛠️ Ручная настройка цветов (HEX)</div>
                     <div class="color-picker-grid">
@@ -498,38 +501,66 @@
             }
 
             if (tabName === 'ssh') {
-                const sampleKey = `-----BEGIN OPENSSH PRIVATE KEY-----
+                if (selectedSshServer) {
+                    // --- View 2: Detailed SSH Keys & Terminal Generator for Selected Server ---
+                    const server = selectedSshServer;
+                    const sampleKey = server.private_key || `-----BEGIN OPENSSH PRIVATE KEY-----
 b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZWQyNTUx
 OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
 -----END OPENSSH PRIVATE KEY-----`;
-                const host = location.hostname;
-                const defaultCmd = `ssh -i "C:\\Users\\username\\.ssh\\remnabot.pem" root@${host} -p 5422`;
+                    const host = server.host || location.hostname || "177.1.202.124";
+                    const port = server.port || 5422;
+                    const defaultCmd = `ssh -i "C:\\Users\\username\\.ssh\\remnabot.pem" root@${host} -p ${port}`;
 
-                return `
-                    <div id="vpsSelectContainer"></div>
-                    <div style="font-size:12px; color:#cbd5e1; margin-bottom:14px; background:rgba(255,255,255,0.04); padding:12px; border-radius:14px; border:1px solid rgba(255,255,255,0.1);">
-                        🔒 <b>Статус защиты VPS:</b> SSH Порт <span id="vpsPortSpan" style="color:#10b981; font-weight:800;">5422</span> (Харденинг активен)<br>
-                        🔑 Вход по паролю: <span style="color:#ef4444; font-weight:700;">Отключен (PasswordAuthentication no)</span><br>
-                        🛡️ Фильтр брутфорса: <span style="color:#10b981; font-weight:700;">Fail2ban Active</span>
-                    </div>
+                    return `
+                        <button class="overlay-btn" style="margin-bottom:14px; background:rgba(99,102,241,0.2); border-color:rgba(129,140,248,0.5);" onclick="window.RemnaOverlay.backToSshGrid()">⬅️ Назад к списку серверов</button>
 
-                    <div class="remna-form-group">
-                        <label>🔑 Приватный SSH-ключ Ed25519 (.pem):</label>
-                        <textarea id="pemKeyBox" style="width:100%; height:85px; font-size:11px; font-family:monospace; background:#000; color:#10b981; border:1px solid rgba(16,185,129,0.3); border-radius:12px; padding:10px; cursor:pointer;" readonly onclick="window.RemnaOverlay.copyKeyToClipboard()" title="Нажмите, чтобы скопировать ключ">${sampleKey}</textarea>
-                        <div style="display:flex; gap:8px; margin-top:8px;">
-                            <button class="overlay-btn" style="flex:1; background:rgba(16,185,129,0.2); border-color:rgba(16,185,129,0.5);" onclick="window.RemnaOverlay.copyKeyToClipboard()">📋 Скопировать Ключ</button>
-                            <button class="overlay-btn" style="flex:1; background:rgba(99,102,241,0.2); border-color:rgba(129,140,248,0.5);" onclick="window.RemnaOverlay.downloadPemKey()">💾 Скачать .pem Ключ</button>
+                        <div style="font-size:13px; font-weight:700; color:#38bdf8; margin-bottom:10px;">
+                            ${server.title || '🖥️ Защищенный Сервер'} (${host})
                         </div>
-                    </div>
 
-                    <div class="remna-form-group" style="margin-top:16px; background:rgba(15,23,42,0.6); padding:14px; border-radius:14px; border:1px solid rgba(255,255,255,0.1);">
-                        <label style="color:#38bdf8; font-weight:700;">⚡ Быстрое подключение из терминала (Windows / Linux / Mac):</label>
-                        <div style="font-size:11px; color:#94a3b8; margin-bottom:6px;">Укажите путь сохранения файла ключа <b>remnabot.pem</b>:</div>
-                        <input type="text" id="sshPathInput" class="remna-input" value="C:\\Users\\username\\.ssh\\remnabot.pem" oninput="window.RemnaOverlay.updateSshCmd()" style="font-family:monospace; font-size:11px; margin-bottom:10px;">
+                        <div style="font-size:12px; color:#cbd5e1; margin-bottom:14px; background:rgba(255,255,255,0.04); padding:12px; border-radius:14px; border:1px solid rgba(255,255,255,0.1);">
+                            🔒 <b>Статус защиты VPS:</b> SSH Порт <span style="color:#10b981; font-weight:800;">${port}</span> (Харденинг активен)<br>
+                            🔑 Вход по паролю: <span style="color:#ef4444; font-weight:700;">Отключен (PasswordAuthentication no)</span><br>
+                            🛡️ Фильтр брутфорса: <span style="color:#10b981; font-weight:700;">Fail2ban Active</span>
+                        </div>
 
-                        <div style="font-size:11px; color:#94a3b8; margin-bottom:4px;">Сгенерированная команда подключения SSH:</div>
-                        <input type="text" id="sshCmdBox" class="remna-input" value="${defaultCmd}" readonly style="font-family:monospace; font-size:11px; color:#38bdf8; background:#000; margin-bottom:8px;">
-                        <button class="remna-btn-primary" style="padding:10px; font-size:13px;" onclick="window.RemnaOverlay.copySshCmd()">📋 Скопировать Команду SSH</button>
+                        <div class="remna-form-group">
+                            <label>🔑 Приватный SSH-ключ Ed25519 (.pem):</label>
+                            <textarea id="pemKeyBox" style="width:100%; height:85px; font-size:11px; font-family:monospace; background:#000; color:#10b981; border:1px solid rgba(16,185,129,0.3); border-radius:12px; padding:10px; cursor:pointer;" readonly onclick="window.RemnaOverlay.copyKeyToClipboard()" title="Нажмите, чтобы скопировать ключ">${sampleKey}</textarea>
+                            <div style="display:flex; gap:8px; margin-top:8px;">
+                                <button class="overlay-btn" style="flex:1; background:rgba(16,185,129,0.2); border-color:rgba(16,185,129,0.5);" onclick="window.RemnaOverlay.copyKeyToClipboard()">📋 Скопировать Ключ</button>
+                                <button class="overlay-btn" style="flex:1; background:rgba(99,102,241,0.2); border-color:rgba(129,140,248,0.5);" onclick="window.RemnaOverlay.downloadPemKey('${host}')">💾 Скачать .pem Ключ</button>
+                            </div>
+                        </div>
+
+                        <div class="remna-form-group" style="margin-top:16px; background:rgba(15,23,42,0.6); padding:14px; border-radius:14px; border:1px solid rgba(255,255,255,0.1);">
+                            <label style="color:#38bdf8; font-weight:700;">⚡ Быстрое подключение из терминала (Windows / Linux / Mac):</label>
+                            <div style="font-size:11px; color:#94a3b8; margin-bottom:6px;">Укажите путь сохранения файла ключа <b>remnabot.pem</b>:</div>
+                            <input type="text" id="sshPathInput" class="remna-input" value="C:\\Users\\username\\.ssh\\remnabot.pem" oninput="window.RemnaOverlay.updateSshCmd('${host}', ${port})" style="font-family:monospace; font-size:11px; margin-bottom:10px;">
+
+                            <div style="font-size:11px; color:#94a3b8; margin-bottom:4px;">Сгенерированная команда подключения SSH:</div>
+                            <input type="text" id="sshCmdBox" class="remna-input" value="${defaultCmd}" readonly style="font-family:monospace; font-size:11px; color:#38bdf8; background:#000; margin-bottom:8px;">
+                            <button class="remna-btn-primary" style="padding:10px; font-size:13px;" onclick="window.RemnaOverlay.copySshCmd()">📋 Скопировать Команду SSH</button>
+                        </div>
+                    `;
+                }
+
+                // --- View 1: Server Cards Grid View ---
+                return `
+                    <div style="font-size:13px; color:#94a3b8; margin-bottom:12px;">Выберите сервер для просмотра параметров SSH Харденинга и выгрузки ключей:</div>
+                    <div id="vpsGridContainer">
+                        <div class="theme-card active" style="text-align:left; padding:14px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;" onclick="window.RemnaOverlay.openServerSshDetail(0)">
+                            <div>
+                                <div style="font-size:14px; font-weight:700; color:#ffffff; display:flex; align-items:center; gap:6px;">
+                                    👑 Основной сервер Панели
+                                </div>
+                                <div style="font-size:11px; color:#94a3b8; margin-top:3px;">
+                                    IP: <b>${location.hostname || '177.1.202.124'}</b> | SSH Порт: <b style="color:#10b981;">5422 🔒</b>
+                                </div>
+                            </div>
+                            <button class="overlay-btn" style="background:rgba(99,102,241,0.3); border-color:rgba(129,140,248,0.6);">🔑 Ключи ➔</button>
+                        </div>
                     </div>
                 `;
             }
@@ -583,39 +614,71 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                 .then(r => r.json())
                 .then(data => {
                     fetchedKeys = data.keys || [];
-                    const selDiv = document.getElementById("vpsSelectContainer");
+                    const gridDiv = document.getElementById("vpsGridContainer");
 
-                    if (fetchedKeys.length > 1 && selDiv) {
-                        let optsHtml = '<label style="color:#38bdf8; font-weight:700; margin-bottom:6px; display:block;">🖥️ Выберите защищенный сервер (Панель или Нода):</label><select id="vpsSelectBox" class="remna-input" style="margin-bottom:12px;" onchange="window.RemnaOverlay.selectVpsKey(this.value)">';
+                    if (gridDiv) {
+                        let html = `
+                            <div class="theme-card active" style="text-align:left; padding:14px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;" onclick="window.RemnaOverlay.openServerSshDetail(0)">
+                                <div>
+                                    <div style="font-size:14px; font-weight:700; color:#ffffff; display:flex; align-items:center; gap:6px;">
+                                        👑 Основной сервер Панели
+                                    </div>
+                                    <div style="font-size:11px; color:#94a3b8; margin-top:3px;">
+                                        IP: <b>${location.hostname || '177.1.202.124'}</b> | SSH Порт: <b style="color:#10b981;">5422 🔒</b>
+                                    </div>
+                                </div>
+                                <button class="overlay-btn" style="background:rgba(99,102,241,0.3); border-color:rgba(129,140,248,0.6);">🔑 Ключи ➔</button>
+                            </div>
+                        `;
+
                         fetchedKeys.forEach((k, idx) => {
-                            optsHtml += `<option value="${idx}">🖥️ ${k.host || 'VPS Сервер'} (SSH Порт ${k.port || 5422})</option>`;
+                            // Avoid duplicating main panel if same host
+                            if (k.host !== location.hostname) {
+                                const flag = k.host.includes("185") ? "🇩🇪" : (k.host.includes("194") ? "🇳🇱" : "🌐");
+                                html += `
+                                    <div class="theme-card" style="text-align:left; padding:14px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;" onclick="window.RemnaOverlay.openServerSshDetail(${idx})">
+                                        <div>
+                                            <div style="font-size:14px; font-weight:700; color:#ffffff; display:flex; align-items:center; gap:6px;">
+                                                ${flag} Нода ${k.host}
+                                            </div>
+                                            <div style="font-size:11px; color:#94a3b8; margin-top:3px;">
+                                                IP: <b>${k.host}</b> | SSH Порт: <b style="color:#10b981;">${k.port || 5422} 🔒</b>
+                                            </div>
+                                        </div>
+                                        <button class="overlay-btn" style="background:rgba(16,185,129,0.3); border-color:rgba(52,211,153,0.6);">🔑 Ключи ➔</button>
+                                    </div>
+                                `;
+                            }
                         });
-                        optsHtml += '</select>';
-                        selDiv.innerHTML = optsHtml;
-                    }
-
-                    if (fetchedKeys.length > 0) {
-                        this.selectVpsKey(0);
-                    } else {
-                        this.updateSshCmd();
+                        gridDiv.innerHTML = html;
                     }
                 })
-                .catch(() => {
-                    this.updateSshCmd();
-                });
+                .catch(() => {});
         },
 
-        selectVpsKey: function(idx) {
-            const keyObj = fetchedKeys[idx];
-            if (!keyObj) return;
+        openServerSshDetail: function(idx) {
+            let serverObj = fetchedKeys[idx];
+            if (!serverObj) {
+                serverObj = {
+                    title: "👑 Основной сервер Панели",
+                    host: location.hostname || "177.1.202.124",
+                    port: 5422,
+                    private_key: null
+                };
+            } else {
+                serverObj.title = serverObj.host === location.hostname ? "👑 Основной сервер Панели" : `🌐 Нода ${serverObj.host}`;
+            }
 
-            const box = document.getElementById("pemKeyBox");
-            if (box && keyObj.private_key) box.value = keyObj.private_key;
+            selectedSshServer = serverObj;
+            const body = document.getElementById("remnaTabBody");
+            if (body) body.innerHTML = this.getTabHtml('ssh');
+        },
 
-            const portSpan = document.getElementById("vpsPortSpan");
-            if (portSpan) portSpan.innerText = keyObj.port || 5422;
-
-            this.updateSshCmd(keyObj.host, keyObj.port);
+        backToSshGrid: function() {
+            selectedSshServer = null;
+            const body = document.getElementById("remnaTabBody");
+            if (body) body.innerHTML = this.getTabHtml('ssh');
+            this.loadSshKeys();
         },
 
         copyKeyToClipboard: function() {
@@ -629,12 +692,10 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
             });
         },
 
-        downloadPemKey: function() {
+        downloadPemKey: function(customHost = null) {
             const box = document.getElementById("pemKeyBox");
             if (!box) return;
-            const input = document.getElementById("vpsSelectBox");
-            const idx = input ? parseInt(input.value) : 0;
-            const host = fetchedKeys[idx] ? fetchedKeys[idx].host : (location.hostname || "remnabot");
+            const host = customHost || location.hostname || "remnabot";
 
             const blob = new Blob([box.value], { type: "application/x-pem-file" });
             const url = URL.createObjectURL(blob);
