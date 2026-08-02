@@ -588,6 +588,10 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                         <input type="password" id="nodePassInput" class="remna-input" placeholder="Пароль от сервера">
                     </div>
                     <div class="remna-form-group">
+                        <label>🌐 Домен Ноды (для VLESS-Reality Self-Steal & SSL):</label>
+                        <input type="text" id="nodeDomainInput" class="remna-input" value="sub.remna-bot.xyz" placeholder="sub.remna-bot.xyz">
+                    </div>
+                    <div class="remna-form-group">
                         <label>Название Ноды (Например, 🇪🇺 Германия VLESS-Reality):</label>
                         <input type="text" id="nodeNameInput" class="remna-input" value="🇪🇺 Германия VLESS-Reality">
                     </div>
@@ -750,6 +754,7 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
         submitNodeDeploy: function() {
             const host = document.getElementById("nodeIpInput").value.trim();
             const password = document.getElementById("nodePassInput").value.trim();
+            const domain = document.getElementById("nodeDomainInput") ? document.getElementById("nodeDomainInput").value.trim() : "sub.remna-bot.xyz";
             const name = document.getElementById("nodeNameInput").value.trim();
             const logDiv = document.getElementById("nodeDeployLog");
 
@@ -758,12 +763,12 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                 return;
             }
 
-            logDiv.innerHTML = "⏳ <b>Развертывание VLESS-Reality ноды начато...</b> Пожалуйста, подождите ~45 секунд.";
+            logDiv.innerHTML = `⏳ <b>Развертывание VLESS-Reality ноды (${domain})...</b> Пожалуйста, подождите ~45 секунд.`;
 
             fetch('/api/deploy/node', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ host, password, name })
+                body: JSON.stringify({ host, password, domain, name })
             })
             .then(r => r.json())
             .then(res => {
