@@ -164,6 +164,7 @@ def run_panel_ssh_install(
         exec_cmd("mkdir -p /opt/remnawave /etc/caddy", "Подготовка каталогов /opt/remnawave и /etc/caddy")
 
         # 6. Generate docker-compose.yml
+        metrics_pass = secrets.token_urlsafe(16)
         compose_content = f"""version: '3.8'
 
 services:
@@ -183,6 +184,19 @@ services:
       timeout: 5s
       retries: 5
 
+  valkey:
+    image: valkey/valkey:8-alpine
+    container_name: remnawave-valkey
+    restart: always
+    command: valkey-server --save 60 1 --loglevel warning
+    volumes:
+      - valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   remnawave:
     image: ghcr.io/remnawave/backend:latest
     container_name: remnawave-panel
@@ -190,14 +204,18 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      valkey:
+        condition: service_healthy
     ports:
       - "127.0.0.1:3000:3000"
     environment:
       DATABASE_URL: "postgresql://remnawave:{db_password}@postgres:5432/remnawave?sslmode=disable"
+      REDIS_HOST: "valkey"
+      REDIS_PORT: "6379"
       FRONT_END_DOMAIN: "{panel_domain}"
       SUB_PUBLIC_DOMAIN: "{sub_domain}"
       METRICS_USER: "admin"
-      METRICS_PASS: "{secrets.token_urlsafe(16)}"
+      METRICS_PASS: "{metrics_pass}"
       APP_SECRET: "{jwt_secret}"
       JWT_AUTH_SECRET: "{jwt_secret}"
       JWT_SECRET: "{jwt_secret}"
@@ -206,6 +224,7 @@ services:
 
 volumes:
   postgres_data:
+  valkey_data:
 """
         sftp = client.open_sftp()
         with sftp.file("/opt/remnawave/docker-compose.yml", "w") as f:
