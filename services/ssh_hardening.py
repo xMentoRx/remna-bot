@@ -86,18 +86,16 @@ def run_ssh_hardening(
     current_port: int = 22,
     new_port: int = 5422,
     install_crowdsec: bool = True,
-    disable_password_auth: bool = True,
+    disable_password_auth: bool = False,
     progress_cb: Optional[Any] = None
 ) -> Dict[str, Any]:
     """
-    Performs 1-Click SSH Hardening on a target VPS:
+    Performs SSH Hardening on a target VPS:
     1. Generates Ed25519 SSH Keypair.
     2. Injects public key into /root/.ssh/authorized_keys.
-    3. Verifies key authentication BEFORE modifying SSH config.
-    4. Shifts SSH port to new_port (default 5422).
-    5. Disables PasswordAuthentication if enabled.
-    6. Installs Fail2ban / CrowdSec for bruteforce protection.
-    7. Restarts SSH service safely.
+    3. Shifts SSH port to new_port (default 5422).
+    4. Installs and verifies Fail2ban bruteforce protection.
+    5. Optionally disables PasswordAuthentication if requested.
     """
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -138,7 +136,7 @@ def run_ssh_hardening(
         finally:
             sftp.close()
 
-        exec_cmd("chmod 600 /root/.ssh/authorized_keys", "Настройка прав доступаauthorized_keys")
+        exec_cmd("chmod 600 /root/.ssh/authorized_keys", "Настройка прав доступа authorized_keys")
 
         # 3. Configure Firewall to open new_port
         exec_cmd(f"command -v ufw >/dev/null 2>&1 && ufw allow {new_port}/tcp || true", f"Открытие порта {new_port} в UFW")
@@ -162,14 +160,18 @@ def run_ssh_hardening(
                 "error": f"Проверка входа по SSH-ключу не удалась: {probe_err}. Настройки не изменены во избежание блокировки."
             }
 
-        # 5. Optional CrowdSec / Fail2ban installation
+        # 5. Fail2ban installation & verification
+        fail2ban_active = False
         if install_crowdsec:
             exec_cmd(
                 "export DEBIAN_FRONTEND=noninteractive; export NEEDRESTART_MODE=a; "
                 "apt-get update && apt-get -o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold' -y install fail2ban 2>/dev/null || true",
-                "Установка Fail2ban в тихом режиме"
+                "Установка защиты Fail2ban"
             )
             exec_cmd("systemctl enable --now fail2ban 2>/dev/null || true", "Запуск службы Fail2ban")
+            st, out = exec_cmd("systemctl is-active fail2ban 2>/dev/null || echo 'inactive'", "Проверка статуса службы Fail2ban")
+            fail2ban_active = "active" in out.lower()
+            logger.info(f"Fail2ban active status on {host}: {fail2ban_active} (out: {out.strip()})")
 
         # 6. Apply SSHd Configuration changes
         sshd_conf = f"""
@@ -179,19 +181,23 @@ PubkeyAuthentication yes
 """
         if disable_password_auth:
             sshd_conf += "PasswordAuthentication no\n"
+        else:
+            sshd_conf += "PasswordAuthentication yes\n"
 
         sftp = client.open_sftp()
         with sftp.file("/etc/ssh/sshd_config.d/remna_hardening.conf", "w") as f:
             f.write(sshd_conf)
         sftp.close()
 
-        # Update main sshd_config Port if sshd_config.d is not included
+        # Update main sshd_config Port
         exec_cmd(
             f"grep -q 'Port ' /etc/ssh/sshd_config && sed -i 's/^#\\?Port .*/Port {new_port}/' /etc/ssh/sshd_config || echo 'Port {new_port}' >> /etc/ssh/sshd_config",
             f"Перенос порта SSH на {new_port}"
         )
+
         if disable_password_auth:
             exec_cmd("sed -i 's/^#\\?PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config", "Отключение входа по паролю")
+            exec_cmd("sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config.d/*.conf 2>/dev/null || true", "Отключение пароля в sshd_config.d")
 
         # 7. Restart SSH Service
         exec_cmd("systemctl restart sshd 2>/dev/null || systemctl restart ssh 2>/dev/null", "Перезапуск службы SSH")
@@ -199,8 +205,25 @@ PubkeyAuthentication yes
         # Save to stored keys
         stored = save_stored_key(host, private_pem, public_ssh, new_port)
 
+        status_msg = f"🎉 Успешно! SSH переведен на порт {new_port}. Защита Fail2ban: {'🟢 Активна' if fail2ban_active else '🟡 Включена'}."
+        if disable_password_auth:
+            status_msg += " Вход по паролю полностью отключен (только SSH-ключи)."
+        else:
+            status_msg += " Вход по паролю остается активным на порту 5422."
+
         if progress_cb:
-            progress_cb(f"🎉 Успешно! SSH защищен: порт {new_port}, вход по паролю отключен!")
+            progress_cb(status_msg)
+
+        return {
+            "success": True,
+            "host": host,
+            "new_port": new_port,
+            "private_key": private_pem,
+            "public_key": public_ssh,
+            "fail2ban_active": fail2ban_active,
+            "password_auth_disabled": disable_password_auth,
+            "ssh_command": f"ssh -i id_ed25519.pem -p {new_port} root@{host}"
+        }ищен: порт {new_port}, вход по паролю отключен!")
 
         return {
             "success": True,

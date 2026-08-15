@@ -321,7 +321,7 @@ volumes:
                     current_port=22,
                     new_port=5422,
                     install_crowdsec=True,
-                    disable_password_auth=True,
+                    disable_password_auth=False,
                     progress_cb=progress_cb
                 )
             except Exception as hard_err:
