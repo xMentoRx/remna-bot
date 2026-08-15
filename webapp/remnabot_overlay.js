@@ -955,7 +955,11 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
         initCanvasFx();
         injectOverlayBar();
         injectSidebarItem();
-        setInterval(injectSidebarItem, 300);
+        setInterval(() => {
+            injectSidebarItem();
+            injectOverlayBar();
+            applyColorEngine();
+        }, 500);
     }
 
     if (document.readyState === "loading") {
