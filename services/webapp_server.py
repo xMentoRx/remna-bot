@@ -312,9 +312,8 @@ async def remna_embed_handler(request: web.Request) -> web.Response:
     panel_url = settings.get("api_url") or API_URL or ""
 
     urls_to_try = [
-        "http://host.docker.internal:3000",
-        "http://172.17.0.1:3000",
         "http://127.0.0.1:3000",
+        "http://localhost:3000",
     ]
     if panel_url and panel_url not in urls_to_try:
         urls_to_try.append(panel_url)

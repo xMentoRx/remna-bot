@@ -9,6 +9,24 @@
             .catch(err => console.warn('SW registration failed:', err));
     }
 
+    // 🔒 Lock URL to /remna_embed so page refresh always goes through our bot (overlay injection)
+    // React Router still works via its internal state — only the URL bar is locked
+    (function lockUrl() {
+        const LOCKED_PATH = '/remna_embed';
+        const _push = history.pushState.bind(history);
+        const _replace = history.replaceState.bind(history);
+        history.pushState = function(state, title, url) {
+            _push(state, title, LOCKED_PATH);
+        };
+        history.replaceState = function(state, title, url) {
+            _replace(state, title, LOCKED_PATH);
+        };
+        // Fix current URL if already changed
+        if (location.pathname !== LOCKED_PATH) {
+            _replace(null, '', LOCKED_PATH);
+        }
+    })();
+
     const presets = [
         { id: "preset-default", name: "Стандарт", accent: "#6366f1", bg: "#0b0f19", card: "#131927", text: "#f8fafc" },
         { id: "preset-ocean", name: "Океан 🌊", accent: "#06b6d4", bg: "#041525", card: "#0a253c", text: "#e0f2fe" },

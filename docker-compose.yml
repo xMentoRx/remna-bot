@@ -7,12 +7,9 @@ services:
     restart: always
     env_file:
       - .env
-    ports:
-      - "8080:8080"
+    network_mode: host
     volumes:
       - ./data:/app/data
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     logging:
       driver: "json-file"
       options:
