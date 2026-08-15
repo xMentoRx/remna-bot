@@ -308,18 +308,15 @@ async def remna_embed_handler(request: web.Request) -> web.Response:
     and injects Remna-Bot Floating Toolbar & Theme CSS scripts!
     """
     settings = load_settings()
-    target_url = settings.get("api_url") or API_URL
-
-    if not target_url:
-        webapp_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "webapp")
-        return web.FileResponse(os.path.join(webapp_dir, "index.html"))
+    target_url = settings.get("api_url") or API_URL or "http://host.docker.internal:3000"
 
     urls_to_try = [
         "http://host.docker.internal:3000",
         "http://172.17.0.1:3000",
-        target_url,
         "http://127.0.0.1:3000"
     ]
+    if target_url and target_url not in urls_to_try:
+        urls_to_try.insert(0, target_url)
     html_content = None
 
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
