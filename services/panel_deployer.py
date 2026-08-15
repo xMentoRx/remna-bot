@@ -109,7 +109,15 @@ def run_panel_ssh_install(
         }
 
     if not admin_password:
-        admin_password = secrets.token_urlsafe(12)
+        import string
+        alphabet = string.ascii_uppercase + string.ascii_lowercase + string.digits
+        while True:
+            candidate = ''.join(secrets.choice(alphabet) for _ in range(32))
+            if (any(c.isupper() for c in candidate) and
+                any(c.islower() for c in candidate) and
+                any(c.isdigit() for c in candidate)):
+                admin_password = candidate
+                break
 
     jwt_secret = secrets.token_hex(32)
     cookie_secret = secrets.token_hex(16)
