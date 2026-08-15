@@ -44,8 +44,9 @@ async def cmd_start(message: types.Message, state: FSMContext):
         return
 
     await state.clear()
-    current_url = API_URL
-    current_token = API_TOKEN
+    settings = load_settings()
+    current_url = settings.get("api_url") or API_URL
+    current_token = settings.get("api_token") or API_TOKEN
 
     if current_url and current_token:
         adapter = RemnawaveAPIAdapter(current_url, current_token)
