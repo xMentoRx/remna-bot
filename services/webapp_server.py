@@ -314,7 +314,12 @@ async def remna_embed_handler(request: web.Request) -> web.Response:
         webapp_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "webapp")
         return web.FileResponse(os.path.join(webapp_dir, "index.html"))
 
-    urls_to_try = [target_url, "http://127.0.0.1:3000", "http://host.docker.internal:3000"]
+    urls_to_try = [
+        "http://host.docker.internal:3000",
+        "http://172.17.0.1:3000",
+        target_url,
+        "http://127.0.0.1:3000"
+    ]
     html_content = None
 
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
