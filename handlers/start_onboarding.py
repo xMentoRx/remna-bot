@@ -176,12 +176,13 @@ async def process_deploy_sub_domain(message: types.Message, state: FSMContext):
     panel_domain = data.get("panel_domain")
 
     status_msg = await message.answer("🛠 **Инициализация установки Панели...**")
+    main_loop = asyncio.get_running_loop()
 
     def progress_callback(update_text: str):
         try:
             asyncio.run_coroutine_threadsafe(
                 status_msg.edit_text(f"🛠 **Процесс установки Панели:**\n\n{update_text}", parse_mode="Markdown"),
-                asyncio.get_event_loop()
+                main_loop
             )
         except Exception as e:
             logger.debug(f"Progress edit failed: {e}")
