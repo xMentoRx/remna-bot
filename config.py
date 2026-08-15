@@ -67,6 +67,12 @@ def save_settings(
         "backup_alert_topic_id": backup_alert_topic_id if backup_alert_topic_id is not None else current.get("backup_alert_topic_id", BACKUP_ALERT_TOPIC_ID)
     }
     
+    global API_URL, API_TOKEN
+    if data.get("api_url"):
+        API_URL = data.get("api_url")
+    if data.get("api_token"):
+        API_TOKEN = data.get("api_token")
+
     try:
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)

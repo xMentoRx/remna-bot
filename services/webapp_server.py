@@ -318,12 +318,26 @@ async def remna_embed_handler(request: web.Request) -> web.Response:
     if target_url and target_url not in urls_to_try:
         urls_to_try.insert(0, target_url)
     html_content = None
+    from urllib.parse import urlparse
+    parsed_target = urlparse(target_url)
+    host_header = parsed_target.netloc if parsed_target.netloc else target_url.replace("http://", "").replace("https://", "").split("/")[0]
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+    }
 
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
         for url in urls_to_try:
             try:
-                async with session.get(url, timeout=4) as resp:
-                    if resp.status == 200:
+                req_headers = dict(headers)
+                if "host.docker.internal" in url or "172.17" in url or "127.0.0.1" in url:
+                    if host_header:
+                        req_headers["Host"] = host_header
+
+                async with session.get(url, headers=req_headers, allow_redirects=True, timeout=5) as resp:
+                    logger.info(f"remna_embed: probing {url} -> status {resp.status}")
+                    if resp.status in (200, 304):
                         html_content = await resp.text()
                         break
             except Exception as err:
