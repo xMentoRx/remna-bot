@@ -7,7 +7,7 @@ logger = logging.getLogger("remna-bot.node-booster")
 
 def run_ssh_cmd(client: paramiko.SSHClient, cmd: str, timeout: int = 15) -> Tuple[int, str, str]:
     try:
-        stdin, stdout, stderr = client.exec_command(cmd, get_pty=True, timeout=timeout)
+        stdin, stdout, stderr = client.exec_command(cmd, timeout=timeout)
         exit_status = stdout.channel.recv_exit_status()
         out = stdout.read().decode('utf-8', errors='ignore')
         err = stderr.read().decode('utf-8', errors='ignore')

@@ -115,7 +115,7 @@ def run_ssh_hardening(
         def exec_cmd(cmd: str, msg: str):
             if progress_cb:
                 progress_cb(f"⚙️ {msg}...")
-            stdin, stdout, stderr = client.exec_command(cmd, get_pty=True)
+            stdin, stdout, stderr = client.exec_command(cmd)
             status = stdout.channel.recv_exit_status()
             out = stdout.read().decode('utf-8', errors='ignore')
             return status, out

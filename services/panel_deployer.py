@@ -126,13 +126,14 @@ def run_panel_ssh_install(
             return {"success": False, "error": f"Не удалось подключиться к VPS `{host}`: {conn_err}"}
 
         def exec_cmd(cmd: str, desc: str):
+            logger.info(f"SSH Exec [{host}]: {desc}")
             if progress_cb:
                 progress_cb(f"⚙️ {desc}...")
-            stdin, stdout, stderr = client.exec_command(cmd, get_pty=True)
+            stdin, stdout, stderr = client.exec_command(cmd)
             status = stdout.channel.recv_exit_status()
             out = stdout.read().decode('utf-8', errors='ignore')
             if status != 0:
-                logger.warning(f"Cmd '{cmd}' status {status}: {out[:100]}")
+                logger.warning(f"Cmd '{desc}' status {status}: {out[:100]}")
             return out
 
         # 1. Non-interactive environment setup & unlock APT locks
