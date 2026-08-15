@@ -575,7 +575,7 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
 
                         <div style="font-size:12px; color:#cbd5e1; margin-bottom:14px; background:rgba(255,255,255,0.04); padding:12px; border-radius:14px; border:1px solid rgba(255,255,255,0.1);">
                             🔒 <b>Статус защиты VPS:</b> SSH Порт <span style="color:#10b981; font-weight:800;">${port}</span> (Харденинг активен)<br>
-                            🔑 Вход по паролю: <span style="color:#ef4444; font-weight:700;">Отключен (PasswordAuthentication no)</span><br>
+                            🔑 Вход по паролю: <span style="color:#10b981; font-weight:700;">Включен на порту ${port}</span><br>
                             🛡️ Фильтр брутфорса: <span style="color:#10b981; font-weight:700;">Fail2ban Active</span>
                         </div>
 
