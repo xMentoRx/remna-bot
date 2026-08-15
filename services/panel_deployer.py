@@ -20,7 +20,15 @@ def auto_register_admin(panel_url: str, admin_username: str, admin_password: str
         "Content-Type": "application/json",
         "X-Remnawave-Client-Type": "browser"
     }
-    register_endpoints = ["/api/auth/register", "/api/auth/setup", "/api/auth/first-user", "/api/auth/register-first"]
+    register_endpoints = [
+        "/api/auth/register",
+        "/api/auth/setup",
+        "/api/auth/first-user",
+        "/api/auth/register-first",
+        "/api/system/setup",
+        "/api/users/first",
+        "/api/auth/init"
+    ]
     
     # Wait up to 120 seconds (60 attempts * 2 sec) for Caddy + Remnawave container to build and start
     for attempt in range(60):

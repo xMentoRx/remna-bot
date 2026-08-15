@@ -37,16 +37,16 @@ class RemnawaveAPIAdapter:
                         if ver:
                             clean_ver = ver if ver.startswith("v") else f"v{ver}"
                             self.detected_version = clean_ver
-                            logger.info(f"Detected Remnawave Panel Version: {clean_ver} (Official compatibility range: v2.7.4+)")
+                            logger.info(f"Detected Remnawave Panel Version: {clean_ver} (Official compatibility range: v2.7.4+ .. v3.2.3+)")
                             return self.detected_version
             except Exception as e:
                 logger.debug(f"Version probe failed: {e}")
 
-            # 2. Probe /api/nodes (v3 / v2.8+)
+            # 2. Probe /api/nodes (v3 / v3.2.x / v2.8+)
             try:
                 async with session.get(f"{self.base_url}/api/nodes", headers=headers) as resp:
                     if resp.status == 200:
-                        self.detected_version = "v2.8.0+"
+                        self.detected_version = "v3.2.3+"
                         return self.detected_version
             except Exception:
                 pass
