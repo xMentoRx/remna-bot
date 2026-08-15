@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup
 
-from config import BOT_TOKEN, ADMIN_IDS, API_URL, API_TOKEN, save_settings
+from config import BOT_TOKEN, ADMIN_IDS, API_URL, API_TOKEN, load_settings, save_settings
 from services.remnawave_api import RemnawaveAPIAdapter
 from services.panel_deployer import deploy_fresh_panel_async
 
