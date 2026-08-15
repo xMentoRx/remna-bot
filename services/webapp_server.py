@@ -310,6 +310,10 @@ async def remna_embed_handler(request: web.Request) -> web.Response:
     settings = load_settings()
     target_url = settings.get("api_url") or API_URL or "http://host.docker.internal:3000"
 
+    sub_path = request.path_qs
+    if sub_path == "/remna_embed":
+        sub_path = "/"
+
     urls_to_try = [
         "http://host.docker.internal:3000",
         "http://172.17.0.1:3000",
@@ -328,20 +332,21 @@ async def remna_embed_handler(request: web.Request) -> web.Response:
     }
 
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-        for url in urls_to_try:
+        for base_u in urls_to_try:
+            full_url = base_u.rstrip('/') + sub_path
             try:
                 req_headers = dict(headers)
-                if "host.docker.internal" in url or "172.17" in url or "127.0.0.1" in url:
+                if "host.docker.internal" in base_u or "172.17" in base_u or "127.0.0.1" in base_u:
                     if host_header:
                         req_headers["Host"] = host_header
 
-                async with session.get(url, headers=req_headers, allow_redirects=True, timeout=5) as resp:
-                    logger.info(f"remna_embed: probing {url} -> status {resp.status}")
+                async with session.get(full_url, headers=req_headers, allow_redirects=True, timeout=5) as resp:
+                    logger.info(f"remna_embed: probing {full_url} -> status {resp.status}")
                     if resp.status in (200, 304):
                         html_content = await resp.text()
                         break
             except Exception as err:
-                logger.warning(f"remna_embed: could not fetch UI from {url}: {err}")
+                logger.warning(f"remna_embed: could not fetch UI from {full_url}: {err}")
 
     if html_content:
         base_url = target_url.rstrip("/") + "/"

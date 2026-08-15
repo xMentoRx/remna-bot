@@ -258,7 +258,7 @@ volumes:
         with sftp.file("/opt/remnawave/docker-compose.yml", "w") as f:
             f.write(compose_content)
 
-        # 7. Configure Caddyfile with /remna_embed proxy routing to remna-bot (port 8080)
+        # 7. Configure Caddyfile with persistent overlay injection via remna-bot (port 8080)
         caddyfile_content = f"""{panel_domain} {{
     handle /remna_embed* {{
         reverse_proxy 127.0.0.1:8080
@@ -287,8 +287,27 @@ volumes:
     handle /api/deploy* {{
         reverse_proxy 127.0.0.1:8080
     }}
-    handle {{
+    handle /api/security* {{
+        reverse_proxy 127.0.0.1:8080
+    }}
+    handle /api/features* {{
+        reverse_proxy 127.0.0.1:8080
+    }}
+
+    # Direct proxy for Remnawave static assets & REST API
+    handle /_next/* {{
         reverse_proxy 127.0.0.1:3000
+    }}
+    handle /api/* {{
+        reverse_proxy 127.0.0.1:3000
+    }}
+    handle /assets/* {{
+        reverse_proxy 127.0.0.1:3000
+    }}
+
+    # All HTML Page requests & Refreshes pass through remna-bot for auto-injection!
+    handle {{
+        reverse_proxy 127.0.0.1:8080
     }}
 }}
 
