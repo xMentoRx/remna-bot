@@ -2,6 +2,13 @@
 (function() {
     console.log("🚀 Remna-Bot Sidebar, Live FX & Theme Customizer Engine Loaded!");
 
+    // Register Service Worker for persistent overlay injection across page reloads
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(reg => console.log('⚡ Remna-Bot SW registered, scope:', reg.scope))
+            .catch(err => console.warn('SW registration failed:', err));
+    }
+
     const presets = [
         { id: "preset-default", name: "Стандарт", accent: "#6366f1", bg: "#0b0f19", card: "#131927", text: "#f8fafc" },
         { id: "preset-ocean", name: "Океан 🌊", accent: "#06b6d4", bg: "#041525", card: "#0a253c", text: "#e0f2fe" },

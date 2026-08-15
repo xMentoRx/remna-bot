@@ -269,6 +269,9 @@ volumes:
     handle /remnabot_overlay* {{
         reverse_proxy 127.0.0.1:8080
     }}
+    handle /sw.js {{
+        reverse_proxy 127.0.0.1:8080
+    }}
     handle /style.css* {{
         reverse_proxy 127.0.0.1:8080
     }}

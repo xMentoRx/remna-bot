@@ -302,98 +302,57 @@ async def api_test_alerts_handler(request: web.Request) -> web.Response:
         logger.error(f"Test alerts error: {e}")
         return web.json_response({"status": "error", "message": f"Ошибка отправки алерта: {e}"}, status=500)
 
-async def _fetch_panel_html_injected() -> str | None:
+async def remna_embed_handler(request: web.Request) -> web.Response:
     """
-    Helper: fetches the root / of Remnawave panel (SPA - single page app),
-    injects our overlay scripts, and returns the modified HTML.
-    Remnawave is Next.js - ALL routes return the SAME index.html.
-    React Router then handles client-side navigation.
+    Proxies Remnawave Panel HTML and injects Remna-Bot overlay scripts.
+    On first load this also registers the Service Worker which then
+    handles ALL subsequent page reloads persistently.
     """
     settings = load_settings()
-    panel_origin = settings.get("api_url") or API_URL or "http://host.docker.internal:3000"
+    panel_url = settings.get("api_url") or API_URL or ""
 
-    # Always fetch ROOT / from panel (not sub-paths) - Next.js SPA returns same HTML for all routes
     urls_to_try = [
-        "http://host.docker.internal:3000/",
-        "http://172.17.0.1:3000/",
-        "http://127.0.0.1:3000/",
+        "http://host.docker.internal:3000",
+        "http://172.17.0.1:3000",
+        "http://127.0.0.1:3000",
     ]
-
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-    }
+    if panel_url and panel_url not in urls_to_try:
+        urls_to_try.append(panel_url)
 
     html_content = None
+    headers = {
+        "User-Agent": "Mozilla/5.0 (compatible; RemnaBot/1.0)",
+        "Accept": "text/html,application/xhtml+xml,*/*;q=0.8"
+    }
+
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-        for url in urls_to_try:
+        for base_u in urls_to_try:
             try:
-                async with session.get(url, headers=headers, timeout=5) as resp:
-                    logger.info(f"panel_html: fetching {url} -> {resp.status}")
+                async with session.get(base_u + "/", headers=headers, timeout=5) as resp:
+                    logger.info(f"remna_embed: {base_u} -> {resp.status}")
                     if resp.status == 200:
                         html_content = await resp.text()
                         break
             except Exception as err:
-                logger.warning(f"panel_html: {url} failed: {err}")
+                logger.warning(f"remna_embed: {base_u} failed: {err}")
 
-    if not html_content:
-        return None
-
-    # Determine the public panel base URL for <base href>
-    if panel_origin.startswith("http://host.docker.internal") or panel_origin.startswith("http://172.") or panel_origin.startswith("http://127."):
-        # Use the stored domain URL if available, else keep internal
-        settings = load_settings()
-        base_url = settings.get("api_url") or panel_origin
-    else:
-        base_url = panel_origin
-    base_url = base_url.rstrip("/") + "/"
-
-    injection = f"""
-    <base href="{base_url}">
-    <link rel="stylesheet" href="/remnabot_overlay.css">
-    <script src="/remnabot_overlay.js" defer></script>
-    </head>
-    """
-    if "</head>" in html_content:
+    if html_content and "</head>" in html_content:
+        public_url = (settings.get("api_url") or "").rstrip("/") + "/"
+        injection = f"""
+<base href="{public_url}">
+<link rel="stylesheet" href="/remnabot_overlay.css">
+<script src="/remnabot_overlay.js" defer></script>
+</head>"""
         html_content = html_content.replace("</head>", injection, 1)
-
-    return html_content
-
-
-async def remna_embed_handler(request: web.Request) -> web.Response:
-    """
-    Entry point for MiniApp - injects overlay into panel HTML.
-    """
-    html_content = await _fetch_panel_html_injected()
-    if html_content:
         return web.Response(
             text=html_content,
             content_type="text/html",
             headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
         )
-    webapp_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "webapp")
-    res = web.FileResponse(os.path.join(webapp_dir, "index.html"))
-    res.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    return res
 
-
-async def panel_page_handler(request: web.Request) -> web.Response:
-    """
-    Catch-all for all Remnawave panel SPA routes (/users, /nodes, /settings, etc.).
-    On page refresh, Caddy sends these here instead of directly to port 3000.
-    We fetch root /, inject overlay, and return - React Router handles the rest client-side.
-    """
-    html_content = await _fetch_panel_html_injected()
-    if html_content:
-        return web.Response(
-            text=html_content,
-            content_type="text/html",
-            headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
-        )
+    # Fallback: serve our own index
     webapp_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "webapp")
-    res = web.FileResponse(os.path.join(webapp_dir, "index.html"))
-    res.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    return res
+    return web.FileResponse(os.path.join(webapp_dir, "index.html"))
 
 # --- WebApp Static Files Handler ---
 async def index_handler(request: web.Request) -> web.Response:
@@ -440,14 +399,8 @@ def create_webapp_app() -> web.Application:
     """Configures and builds the aiohttp Application for MiniApp."""
     app = web.Application()
 
-    # MiniApp Entry Point & Panel SPA Routes (inject overlay on every page load/refresh)
+    # Panel entry point with overlay injection
     app.router.add_get("/remna_embed", remna_embed_handler)
-
-    # Known Remnawave panel SPA routes - on refresh these come here, not directly to port 3000
-    for panel_route in ["/", "/users", "/nodes", "/hosts", "/settings",
-                        "/api-tokens", "/subscriptions", "/inbounds",
-                        "/system", "/keygen", "/expired", "/online"]:
-        app.router.add_get(panel_route, panel_page_handler)
 
     # Our REST API Routes
     app.router.add_get("/api/stats", api_stats_handler)
@@ -468,10 +421,14 @@ def create_webapp_app() -> web.Application:
     app.router.add_post("/api/balancer/toggle", api_balancer_toggle_handler)
     app.router.add_post("/api/balancer/setup", api_balancer_setup_handler)
 
-    # Static Assets (our overlay CSS/JS served at /remnabot_overlay.css, /remnabot_overlay.js etc.)
+    # Static Assets: overlay CSS, JS, and Service Worker
     webapp_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "webapp")
     app.router.add_get("/remnabot_overlay.css", lambda r: web.FileResponse(os.path.join(webapp_dir, "remnabot_overlay.css")))
     app.router.add_get("/remnabot_overlay.js", lambda r: web.FileResponse(os.path.join(webapp_dir, "remnabot_overlay.js")))
+    app.router.add_get("/sw.js", lambda r: web.FileResponse(
+        os.path.join(webapp_dir, "sw.js"),
+        headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"}
+    ))
 
     return app
 
