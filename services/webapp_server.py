@@ -88,7 +88,7 @@ async def api_deploy_node_handler(request: web.Request) -> web.Response:
         if not (ip and password):
             return web.json_response({"status": "error", "message": "Укажите IP и пароль ноды"}, status=400)
 
-        # Check if panel is configured to auto-link node secret
+        # 1. Check if panel is configured
         settings = load_settings()
         panel_url = settings.get("api_url", "")
         api_token = settings.get("api_token", "")
@@ -98,17 +98,49 @@ async def api_deploy_node_handler(request: web.Request) -> web.Response:
             try:
                 adapter = RemnawaveAPIAdapter(panel_url, api_token)
                 node_name = clean_api_name(name) if name else f"{country}-{ip}"
-                # 1. Attempt creating dedicated Self-Steal VLESS-Reality Profile for this node
-                try:
-                    prof_uuid = await adapter.create_self_steal_profile(node_name=node_name, domain=domain)
-                except Exception:
-                    prof_uuid = None
-                res = await adapter.create_node(name=node_name, address=ip, port=443, profile_uuid=prof_uuid or "")
-                if res and isinstance(res, dict):
-                    node_secret = res.get("secretKey") or res.get("secret") or res.get("response", {}).get("secretKey", "")
-            except Exception as e:
-                logger.warning(f"Could not auto-register node in Remnawave API: {e}")
+                country_flags = {
+                    "NL": "🇳🇱", "DE": "🇩🇪", "FI": "🇫🇮", "SE": "🇸🇪",
+                    "RU": "🇷🇺", "PL": "🇵🇱", "US": "🇺🇸", "FR": "🇫🇷", "TR": "🇹🇷"
+                }
+                flag = country_flags.get(country, "🌐")
+                host_remark = f"{flag} {name}".strip() if name else f"{flag} {country}-{ip}"
 
+                # Step 1: Fetch global panel pubKey for node container authentication
+                node_secret = await adapter.fetch_panel_pubkey()
+
+                # Step 2: Create dedicated Self-Steal VLESS-Reality Config Profile
+                prof_uuid, inbound_uuid = await adapter.create_self_steal_profile(node_name=node_name, domain=domain)
+                logger.info(f"Self-Steal Profile created: profile={prof_uuid}, inbound={inbound_uuid}")
+
+                # Step 3: Register node in panel
+                if prof_uuid:
+                    node_res = await adapter.create_node(
+                        name=node_name,
+                        address=domain or ip,
+                        port=2222,
+                        config_profile_uuid=prof_uuid,
+                        inbound_uuid=inbound_uuid or "",
+                        country_code=country
+                    )
+                    logger.info(f"Node registered in panel: {node_res}")
+
+                # Step 4: Create Host in panel linked to Inbound
+                if prof_uuid and inbound_uuid:
+                    host_res = await adapter.create_host(
+                        domain=domain or ip,
+                        config_uuid=prof_uuid,
+                        inbound_uuid=inbound_uuid,
+                        remark=host_remark
+                    )
+                    logger.info(f"Host created in panel: {host_res}")
+
+                    # Step 5: Auto-link inbound to internal squads
+                    await adapter.add_inbound_to_squads(inbound_uuid)
+
+            except Exception as e:
+                logger.warning(f"Error during Remnawave API node/host registration: {e}")
+
+        # Step 6: Deploy VPS via SSH (Nginx Unix Socket + Certbot SSL + Docker Compose Node + zapret.dat + UFW + SSH Hardening)
         success = await deploy_node_async(
             host=ip,
             password=password,
@@ -117,10 +149,17 @@ async def api_deploy_node_handler(request: web.Request) -> web.Response:
             node_secret=node_secret,
             panel_url=panel_url
         )
+
         if success:
-            return web.json_response({"status": "success", "message": "Нода развернута"})
+            return web.json_response({
+                "status": "success",
+                "message": f"Нода {ip} ({country}) с Self-Steal VLESS-Reality успешно развернута, защищена и добавлена в панель!"
+            })
         else:
-            return web.json_response({"status": "error", "message": "Ошибка подключения к VPS ноды"}, status=500)
+            return web.json_response({
+                "status": "error",
+                "message": "Ошибка подключения или настройки VPS ноды через SSH"
+            }, status=500)
     except Exception as e:
         logger.error(f"Error in node deploy handler: {e}")
         return web.json_response({"status": "error", "message": str(e)}, status=500)

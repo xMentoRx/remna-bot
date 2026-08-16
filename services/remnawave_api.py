@@ -101,48 +101,102 @@ class RemnawaveAPIAdapter:
         return []
 
     async def fetch_reality_keys(self) -> Tuple[str, str, str]:
-        """Fetches Reality Keypair (publicKey, privateKey) and shortId from Remnawave system API."""
-        pub_key, priv_key, short_id = "", "", "a1b2c3d4e5f6"
-        if not self.base_url or not self.token:
-            return pub_key, priv_key, short_id
-
+        """Fetches or generates Reality Keypair (publicKey, privateKey) and shortId."""
+        pub_key, priv_key, short_id = "", "", ""
         headers = self.get_headers()
-        async with aiohttp.ClientSession(timeout=self.timeout) as session:
-            try:
-                async with session.get(f"{self.base_url}/api/system/xray/reality-keys", headers=headers) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        res = data.get("response", data)
-                        pub_key = res.get("publicKey", "")
-                        priv_key = res.get("privateKey", "")
-            except Exception as e:
-                logger.debug(f"Failed fetching reality keys: {e}")
+        
+        # Try Remnawave tools/x25519 or reality-keys endpoint
+        if self.base_url and self.token:
+            async with aiohttp.ClientSession(timeout=self.timeout) as session:
+                try:
+                    async with session.get(f"{self.base_url}/api/system/tools/x25519/generate", headers=headers) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            kp = data.get("response", {}).get("keypairs", [])
+                            if kp and len(kp) > 0:
+                                priv_key = kp[0].get("privateKey", "")
+                                pub_key = kp[0].get("publicKey", "")
+                except Exception as e:
+                    logger.debug(f"Tools x25519 probe failed: {e}")
 
+                if not priv_key:
+                    try:
+                        async with session.get(f"{self.base_url}/api/system/xray/reality-keys", headers=headers) as resp:
+                            if resp.status == 200:
+                                data = await resp.json()
+                                res = data.get("response", data)
+                                pub_key = res.get("publicKey", "")
+                                priv_key = res.get("privateKey", "")
+                    except Exception as e:
+                        logger.debug(f"Failed fetching reality keys: {e}")
+
+                try:
+                    async with session.get(f"{self.base_url}/api/system/xray/secret-key", headers=headers) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            res = data.get("response", data)
+                            short_id = res.get("shortId") or res.get("secretKey") or ""
+                except Exception as e:
+                    logger.debug(f"Failed fetching secret key: {e}")
+
+        # Fallback: In-memory crypto generation if panel endpoints are unavailable
+        if not priv_key:
             try:
-                async with session.get(f"{self.base_url}/api/system/xray/secret-key", headers=headers) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        res = data.get("response", data)
-                        short_id = res.get("shortId") or res.get("secretKey") or short_id
-            except Exception as e:
-                logger.debug(f"Failed fetching secret key: {e}")
+                import secrets
+                import base64
+                from cryptography.hazmat.primitives.asymmetric import x25519
+                from cryptography.hazmat.primitives import serialization
+                key = x25519.X25519PrivateKey.generate()
+                priv_raw = key.private_bytes(serialization.Encoding.Raw, serialization.PrivateFormat.Raw, serialization.NoEncryption())
+                pub_raw = key.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+                priv_key = base64.urlsafe_b64encode(priv_raw).decode('utf-8').rstrip('=')
+                pub_key = base64.urlsafe_b64encode(pub_raw).decode('utf-8').rstrip('=')
+            except Exception as gen_err:
+                logger.warning(f"Fallback X25519 generation failed: {gen_err}")
+
+        if not short_id:
+            import secrets
+            short_id = secrets.token_hex(8)
 
         return pub_key, priv_key, short_id
 
-    async def create_self_stealth_profile(self, node_name: str, domain: str = "example.com") -> Optional[str]:
+    async def fetch_panel_pubkey(self) -> str:
+        """Fetches the global Node SECRET_KEY from the Remnawave Panel (/api/keygen)."""
+        if not self.base_url or not self.token:
+            return ""
+        headers = self.get_headers()
+        async with aiohttp.ClientSession(timeout=self.timeout) as session:
+            try:
+                async with session.get(f"{self.base_url}/api/keygen", headers=headers) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        return data.get("response", {}).get("pubKey", "") or data.get("pubKey", "")
+            except Exception as e:
+                logger.debug(f"Failed fetching panel pubKey via keygen: {e}")
+        return ""
+
+    async def create_self_steal_profile(self, node_name: str, domain: str = "example.com") -> Tuple[Optional[str], Optional[str]]:
         """
-        Creates a dedicated Self-Stealth VLESS Reality ConfigProfile for a node:
+        Creates a dedicated Self-Steal VLESS Reality ConfigProfile for a node:
         - dest: /dev/shm/nginx.sock (Nginx Unix Socket Stealth Masking)
         - xver: 1
         - WARP AI routing rules (OpenAI, Gemini, Claude, Perplexity)
         - Torrent & Private IP blocking
+        Returns (config_profile_uuid, inbound_uuid).
         """
         if not self.base_url or not self.token:
-            return None
+            return None, None
+
+        import re
+        import secrets
+
+        # Sanitization
+        clean_name = re.sub(r'[^\w\s-]', '', node_name).strip() or "Node"
+        inbound_tag = re.sub(r'[^a-zA-Z0-9-]', '', clean_name.replace(" ", "-"))
+        inbound_tag = re.sub(r'-+', '-', inbound_tag).strip("-") or "vless-reality"
 
         headers = self.get_headers()
         pub_key, priv_key, short_id = await self.fetch_reality_keys()
-        clean_name = clean_api_name(node_name)
 
         stealth_config = {
             "log": { "loglevel": "warning" },
@@ -151,7 +205,7 @@ class RemnawaveAPIAdapter:
                 "servers": [{ "address": "https://dns.google/dns-query", "skipFallback": False }]
             },
             "inbounds": [{
-                "tag": f"vless-reality-{clean_name}",
+                "tag": inbound_tag,
                 "port": 443,
                 "protocol": "vless",
                 "settings": { "clients": [], "decryption": "none" },
@@ -200,32 +254,26 @@ class RemnawaveAPIAdapter:
             }
         }
 
-        prof_payloads = [
-            {
-                "name": f"SelfSteal-{clean_name}",
-                "description": f"Self-Steal Reality Profile for {clean_name} ({domain})",
-                "config": steal_config
-            },
-            {
-                "name": f"SelfSteal-{clean_name}",
-                "profile": steal_config
-            }
-        ]
+        payload = {
+            "name": f"SelfSteal-{clean_name}",
+            "config": stealth_config
+        }
 
         async with aiohttp.ClientSession(timeout=self.timeout) as session:
-            for prof_payload in prof_payloads:
-                try:
-                    async with session.post(f"{self.base_url}/api/config-profiles", headers=headers, json=prof_payload) as resp:
-                        if resp.status in (200, 201):
-                            data = await resp.json()
-                            prof_obj = data.get("response", data)
-                            prof_uuid = prof_obj.get("uuid") or prof_obj.get("id")
-                            logger.info(f"Created dedicated Self-Steal Profile '{prof_payload['name']}' ({prof_uuid})")
-                            return prof_uuid
-                except Exception as e:
-                    logger.warning(f"Self-steal profile creation primary method failed: {e}")
+            try:
+                async with session.post(f"{self.base_url}/api/config-profiles", headers=headers, json=payload) as resp:
+                    if resp.status in (200, 201):
+                        data = await resp.json()
+                        res = data.get("response", data)
+                        prof_uuid = res.get("uuid") or res.get("id")
+                        inbounds = res.get("inbounds", [])
+                        inbound_uuid = inbounds[0].get("uuid") if inbounds else None
+                        logger.info(f"Created dedicated Self-Steal Profile '{payload['name']}' ({prof_uuid}), Inbound: {inbound_uuid}")
+                        return prof_uuid, inbound_uuid
+            except Exception as e:
+                logger.warning(f"Self-steal profile creation failed: {e}")
 
-            # 2. Fallback: Get existing profile if already exists
+            # Fallback: Get existing profile if already exists
             try:
                 async with session.get(f"{self.base_url}/api/config-profiles", headers=headers) as resp:
                     if resp.status == 200:
@@ -233,11 +281,127 @@ class RemnawaveAPIAdapter:
                         profiles = data if isinstance(data, list) else data.get("response", {}).get("configProfiles", data.get("configProfiles", []))
                         if profiles and isinstance(profiles, list) and len(profiles) > 0:
                             first_p = profiles[0]
-                            return first_p.get("uuid") or first_p.get("id")
+                            p_uuid = first_p.get("uuid") or first_p.get("id")
+                            p_inbounds = first_p.get("inbounds", [])
+                            ib_uuid = p_inbounds[0].get("uuid") if p_inbounds else None
+                            return p_uuid, ib_uuid
             except Exception as e:
                 logger.warning(f"Failed fetching fallback config profiles: {e}")
 
-        return None
+        return None, None
+
+    async def create_node(
+        self,
+        name: str,
+        address: str,
+        port: int = 2222,
+        config_profile_uuid: str = "",
+        inbound_uuid: str = "",
+        country_code: str = "NL"
+    ) -> Dict[str, Any]:
+        """Registers a new node in Remnawave Panel via POST /api/nodes."""
+        if not self.base_url or not self.token:
+            return {}
+
+        import re
+        api_name = re.sub(r'[^\w\s-]', '', name).strip() or "Node"
+        payload = {
+            "name": api_name,
+            "address": address,
+            "port": port,
+            "configProfile": {
+                "activeConfigProfileUuid": config_profile_uuid,
+                "activeInbounds": [inbound_uuid] if inbound_uuid else []
+            },
+            "isTrafficTrackingActive": False,
+            "trafficLimitBytes": 0,
+            "notifyPercent": 0,
+            "trafficResetDay": 31,
+            "excludedInbounds": [],
+            "countryCode": country_code.upper(),
+            "consumptionMultiplier": 1.0
+        }
+
+        headers = self.get_headers()
+        async with aiohttp.ClientSession(timeout=self.timeout) as session:
+            try:
+                async with session.post(f"{self.base_url}/api/nodes", headers=headers, json=payload) as resp:
+                    data = await resp.json()
+                    logger.info(f"create_node response: {resp.status} - {data}")
+                    return data.get("response", data)
+            except Exception as e:
+                logger.error(f"Error creating node in Remnawave API: {e}")
+                return {}
+
+    async def create_host(
+        self,
+        domain: str,
+        config_uuid: str,
+        inbound_uuid: str,
+        remark: str = "Self-Steal Host"
+    ) -> Dict[str, Any]:
+        """Creates Host entry linked to the Inbound via POST /api/hosts."""
+        if not self.base_url or not self.token:
+            return {}
+
+        payload = {
+            "inbound": {
+                "configProfileUuid": config_uuid,
+                "configProfileInboundUuid": inbound_uuid
+            },
+            "remark": remark,
+            "address": domain,
+            "port": 443,
+            "path": "",
+            "sni": domain,
+            "host": "",
+            "alpn": None,
+            "fingerprint": "firefox",
+            "allowInsecure": False,
+            "isDisabled": False,
+            "securityLayer": "DEFAULT"
+        }
+
+        headers = self.get_headers()
+        async with aiohttp.ClientSession(timeout=self.timeout) as session:
+            try:
+                async with session.post(f"{self.base_url}/api/hosts", headers=headers, json=payload) as resp:
+                    data = await resp.json()
+                    logger.info(f"create_host response: {resp.status} - {data}")
+                    return data.get("response", data)
+            except Exception as e:
+                logger.error(f"Error creating host in Remnawave API: {e}")
+                return {}
+
+    async def add_inbound_to_squads(self, inbound_uuid: str) -> bool:
+        """Adds a newly created Inbound to all internal squads so client keys include this node."""
+        if not self.base_url or not self.token or not inbound_uuid:
+            return False
+
+        headers = self.get_headers()
+        async with aiohttp.ClientSession(timeout=self.timeout) as session:
+            try:
+                async with session.get(f"{self.base_url}/api/internal-squads", headers=headers) as resp:
+                    if resp.status != 200:
+                        return False
+                    data = await resp.json()
+                    squads = data.get("response", {}).get("internalSquads", [])
+
+                for squad in squads:
+                    s_uuid = squad.get("uuid")
+                    current_ibs = [ib.get("uuid") for ib in squad.get("inbounds", []) if ib.get("uuid")]
+                    if inbound_uuid not in current_ibs:
+                        current_ibs.append(inbound_uuid)
+                        patch_payload = {
+                            "uuid": s_uuid,
+                            "inbounds": current_ibs
+                        }
+                        async with session.patch(f"{self.base_url}/api/internal-squads", headers=headers, json=patch_payload) as patch_resp:
+                            logger.info(f"Updated squad {squad.get('name')} with inbound {inbound_uuid}: status {patch_resp.status}")
+                return True
+            except Exception as e:
+                logger.error(f"Error updating internal squads with inbound {inbound_uuid}: {e}")
+                return False
 
     async def fetch_users_list(self, query: str = "") -> List[Dict[str, Any]]:
         """Fetches and filters users asynchronously by Telegram ID, Username, user_ID, UUID, or t.me links."""

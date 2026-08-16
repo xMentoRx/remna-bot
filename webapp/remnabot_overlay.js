@@ -652,7 +652,7 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                     </div>
                     <div class="remna-form-group">
                         <label>🌐 Домен Ноды (для VLESS-Reality Self-Steal & SSL):</label>
-                        <input type="text" id="nodeDomainInput" class="remna-input" value="sub.remna-bot.xyz" placeholder="sub.remna-bot.xyz">
+                        <input type="text" id="nodeDomainInput" class="remna-input" placeholder="например node1.yourdomain.com">
                     </div>
                     <div class="remna-form-group">
                         <label>🏳️ Страна размещения Ноды:</label>
@@ -952,7 +952,8 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
         submitNodeDeploy: function() {
             const host = document.getElementById("nodeIpInput").value.trim();
             const password = document.getElementById("nodePassInput").value.trim();
-            const domain = document.getElementById("nodeDomainInput") ? document.getElementById("nodeDomainInput").value.trim() : "sub.remna-bot.xyz";
+            const domainInput = document.getElementById("nodeDomainInput");
+            const domain = (domainInput && domainInput.value.trim()) ? domainInput.value.trim() : host;
             const name = document.getElementById("nodeNameInput").value.trim();
             const country = selectedCountry ? selectedCountry.code : "DE";
             const logDiv = document.getElementById("nodeDeployLog");

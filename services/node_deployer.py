@@ -138,7 +138,7 @@ def run_node_full_deploy(
     panel_url: str = "",
     progress_cb: Optional[Callable[[str], None]] = None
 ) -> bool:
-    """Performs full 1-click deployment of Remnawave Node on a remote server."""
+    """Performs full production-grade 1-click deployment of Remnawave Node (Self-Steal + Nginx + Certbot + Xray + BBR + SSH Hardening)."""
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
@@ -152,50 +152,86 @@ def run_node_full_deploy(
             status = stdout.channel.recv_exit_status()
             out = stdout.read().decode('utf-8', errors='ignore')
             if status != 0:
-                logger.warning(f"Cmd {cmd} warning: status {status}, out: {out[:100]}")
+                logger.warning(f"Cmd '{cmd[:60]}' warning: status {status}, out: {out[:120]}")
+            return status, out
 
-        # 1. Non-interactive environment setup & unlock APT locks
+        # 1. Resolve Panel IP for UFW security rules
+        panel_ip = None
+        if panel_url:
+            try:
+                import socket
+                from urllib.parse import urlparse
+                phost = urlparse(panel_url).hostname
+                if phost:
+                    panel_ip = socket.gethostbyname(phost)
+                    logger.info(f"Resolved Panel IP for UFW: {panel_ip}")
+            except Exception as pe:
+                logger.debug(f"Could not resolve panel IP: {pe}")
+
+        # 2. Non-interactive environment setup & unlock APT locks
         exec_cmd(
             "export DEBIAN_FRONTEND=noninteractive; export NEEDRESTART_MODE=a; export UCF_FORCE_CONFFOLD=1; "
             "mkdir -p /etc/needrestart/conf.d; echo '$nrconf{restart} = \"a\";' > /etc/needrestart/conf.d/50auto.conf 2>/dev/null || true; "
             "for i in {1..10}; do fuser -v /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; sleep 3; done; "
-            "systemctl stop unattended-upgrades apache2 nginx 2>/dev/null || true; "
+            "systemctl stop unattended-upgrades apache2 2>/dev/null || true; "
             "killall -9 apt apt-get dpkg 2>/dev/null || true; "
             "rm -f /var/lib/dpkg/lock* /var/lib/apt/lists/lock /var/cache/apt/archives/lock",
-            "Подавление диалогов и снятие APT-блокировок на ноде"
+            "Подавление диалогов и снятие APT-блокировок"
         )
 
-        # 2. Update APT and install base utilities
+        # 3. Update APT and install base utilities, Nginx, Certbot & Docker Compose v2
         exec_cmd(
             "export DEBIAN_FRONTEND=noninteractive; export NEEDRESTART_MODE=a; "
-            "apt-get update && apt-get -o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold' -y install curl nginx jq ca-certificates",
-            "Обновление пакетов и установка Nginx (Тихий режим)"
+            "apt-get update && apt-get -o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold' -y install "
+            "curl wget git nginx certbot python3-certbot-nginx cron ufw ca-certificates jq unzip",
+            "Установка Nginx, Certbot, UFW и сетевых утилит"
         )
 
-        # 3. Docker setup
+        # 4. Check & Install Docker Engine
         exec_cmd(
             "export DEBIAN_FRONTEND=noninteractive; export NEEDRESTART_MODE=a; "
             "command -v docker >/dev/null 2>&1 || (curl -fsSL https://get.docker.com | sh); "
-            "apt-get -o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold' -y install docker-compose-v2 2>/dev/null || true",
+            "apt-get -o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold' -y install docker.io docker-compose-v2 2>/dev/null || true; "
+            "systemctl enable --now docker 2>/dev/null || true",
             "Проверка и установка Docker Engine"
         )
 
-        # 4. System optimization & BBR
-        exec_cmd("sysctl -w net.core.default_qdisc=fq && sysctl -w net.ipv4.tcp_congestion_control=bbr", "Включение BBR и сетевой оптимизации FQ")
+        # 5. Configure UFW Firewall
+        exec_cmd("ufw --force enable 2>/dev/null || true", "Активация сетевого экрана UFW")
+        exec_cmd("ufw allow 22/tcp 2>/dev/null || true; ufw allow 5422/tcp 2>/dev/null || true; ufw allow 80/tcp 2>/dev/null || true; ufw allow 443/tcp 2>/dev/null || true", "Открытие портов SSH, HTTP, HTTPS")
+        if panel_ip:
+            exec_cmd(f"ufw allow from {panel_ip} to any port 2222 proto tcp 2>/dev/null || true", f"Ограничение порта ноды (2222) только для Панели ({panel_ip})")
+        else:
+            exec_cmd("ufw allow 2222/tcp 2>/dev/null || true", "Открытие порта 2222 для ноды")
+        exec_cmd("ufw reload 2>/dev/null || true", "Перезагрузка правил UFW")
 
-        # 5. Create Nginx decoy site & unix socket path explicitly before SFTP
-        exec_cmd("mkdir -p /var/www/html /etc/nginx/sites-available /etc/nginx/sites-enabled /opt/remnawave-node", "Подготовка каталогов Nginx и Docker")
-        
+        # 6. Prepare directories for Nginx, Decoy, SSL, and Remnawave Node
+        exec_cmd(
+            "mkdir -p /var/www/html /etc/nginx/sites-available /etc/nginx/sites-enabled /opt/remnanode /opt/remnawave/xray/share /var/log/remnanode /dev/shm",
+            "Подготовка каталогов Nginx, Docker и Xray"
+        )
+
+        # 7. Write realistic Decoy Site HTML
         decoy_html = generate_decoy_html(domain)
         sftp = client.open_sftp()
         with sftp.file("/var/www/html/index.html", "w") as f:
             f.write(decoy_html)
 
-        # Write stealth nginx config
+        # 8. Write Self-Steal Nginx Virtual Host Config
         nginx_conf = f"""server {{
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    server_name _;
+    listen 80;
+    server_name {domain};
+    return 301 https://$host$request_uri;
+}}
+
+server {{
+    listen unix:/dev/shm/nginx.sock ssl proxy_protocol;
+    server_name {domain};
+
+    ssl_certificate /etc/letsencrypt/live/{domain}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{domain}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
     root /var/www/html;
     index index.html;
 
@@ -204,45 +240,86 @@ def run_node_full_deploy(
     }}
 }}
 """
-        with sftp.file("/etc/nginx/sites-available/default", "w") as f:
+        with sftp.file(f"/etc/nginx/sites-available/{domain}", "w") as f:
             f.write(nginx_conf)
 
-        # Write Remnawave Node docker-compose.yml if secret key is provided
-        if node_secret:
-            node_compose = f"""version: '3.8'
-
-services:
-  remnawave-node:
+        # 9. Write Remnawave Node docker-compose.yml
+        docker_compose = f"""services:
+  remnanode:
+    container_name: remnanode
+    hostname: remnanode
     image: ghcr.io/remnawave/node:latest
-    container_name: remnawave-node
     restart: always
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    ulimits:
+      nofile:
+        soft: 1048576
+        hard: 1048576
     environment:
-      SECRET_KEY: "{node_secret}"
-      PANEL_URL: "{panel_url}"
-      REMNAWAVE_SECRET_KEY: "{node_secret}"
-      REMNAWAVE_PANEL_URL: "{panel_url}"
+      - NODE_PORT=2222
+      - SECRET_KEY={node_secret}
+      - API_URL={panel_url}
+    volumes:
+      - '/opt/remnawave/xray/share/zapret.dat:/usr/local/bin/zapret.dat'
+      - '/etc/letsencrypt:/etc/letsencrypt:ro'
+      - '/var/log/remnanode:/var/log/remnanode'
+      - '/dev/shm:/dev/shm:rw'
 """
-            with sftp.file("/opt/remnawave-node/docker-compose.yml", "w") as f:
-                f.write(node_compose)
+        with sftp.file("/opt/remnanode/docker-compose.yml", "w") as f:
+            f.write(docker_compose)
 
         sftp.close()
 
-        exec_cmd("systemctl restart nginx", "Запуск Stealth Nginx маскировки")
+        # 10. Issue Let's Encrypt SSL certificate via Certbot standalone
+        exec_cmd("systemctl stop nginx 2>/dev/null || true", "Остановка Nginx перед получением SSL")
+        exec_cmd(
+            f"certbot certonly --standalone -d {domain} --register-unsafely-without-email --agree-tos --non-interactive",
+            f"Выпуск SSL-сертификата Let's Encrypt для {domain}"
+        )
+
+        # Enable site and start Nginx
+        exec_cmd(
+            f"ln -sf /etc/nginx/sites-available/{domain} /etc/nginx/sites-enabled/ && rm -f /etc/nginx/sites-enabled/default",
+            "Активация виртуального хоста Nginx"
+        )
+        exec_cmd("systemctl restart nginx 2>/dev/null || systemctl start nginx", "Запуск Stealth Nginx (Unix-сокет)")
+
+        # Setup autorenewal cron for Certbot
+        exec_cmd(
+            '(crontab -l 2>/dev/null | grep -v certbot; echo "0 12 * * * systemctl stop nginx && /usr/bin/certbot renew --quiet && systemctl start nginx") | crontab -',
+            "Настройка авто-продления SSL через cron"
+        )
+
+        # 11. Download anti-censorship database (zapret.dat) & Start Node Container
+        exec_cmd(
+            "wget -O /opt/remnawave/xray/share/zapret.dat https://github.com/kutovoys/ru_gov_zapret/releases/latest/download/zapret.dat 2>/dev/null || true",
+            "Загрузка базы обхода блокировок zapret.dat"
+        )
 
         if node_secret:
-            exec_cmd("cd /opt/remnawave-node && docker compose up -d", "Запуск Remnawave Node контейнера")
+            exec_cmd(
+                "cd /opt/remnanode && docker compose down --remove-orphans 2>/dev/null || true; "
+                "docker rm -f remnanode 2>/dev/null || true; "
+                "docker compose up -d",
+                "Запуск контейнера Remnawave Node (ghcr.io/remnawave/node:latest)"
+            )
 
-        # Auto-run SSH Hardening on the new Node VPS
+        # 12. Apply Kernel BBR & Network Optimizations
+        exec_cmd("sysctl -w net.core.default_qdisc=fq && sysctl -w net.ipv4.tcp_congestion_control=bbr", "Включение BBR и оптимизации FQ")
+
+        # 13. Auto-run SSH Hardening on the new Node VPS
         try:
             from services.ssh_hardening import run_ssh_hardening
             if progress_cb:
-                progress_cb(f"🛡️ Выполнение SSH Харденинга для Ноды {host}...")
+                progress_cb(f"🛡️ Применение SSH Харденинга для Ноды {host} (Порт 5422, Fail2ban)...")
             run_ssh_hardening(host, password, current_port=22, new_port=5422)
         except Exception as hard_err:
             logger.warning(f"Auto SSH hardening on node {host} skipped: {hard_err}")
 
         if progress_cb:
-            progress_cb(f"🎉 Нода `{host}` ({country_code}) успешно настроена и защищена!")
+            progress_cb(f"🎉 Нода `{host}` ({country_code}) с Self-Steal VLESS-Reality успешно развернута!")
         return True
 
     except Exception as e:

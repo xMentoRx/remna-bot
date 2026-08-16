@@ -125,3 +125,69 @@ async def cb_delete_node(callback: types.CallbackQuery):
     else:
         await callback.answer("❌ Ошибка при удалении ноды.", show_alert=True)
 
+@router.callback_query(F.data == "btn_deploy_node_wiz")
+async def cb_deploy_node_wiz(callback: types.CallbackQuery):
+    await callback.answer()
+    settings = load_settings()
+    web_port = settings.get("webapp_port", 8080)
+    web_host = settings.get("api_url", "")
+    
+    text = (
+        "🚀 **1-Click Развертывание Новой Ноды**\n\n"
+        "Вы можете быстро развернуть и защитить новую ноду с **VLESS-Reality (Self-Steal)**:\n\n"
+        "1️⃣ **Через WebApp Mini-App:**\n"
+        "Откройте мини-апп через кнопку меню слева снизу или в панели, выберите вкладку `🚀 Нода` и укажите IP, пароль и страну.\n\n"
+        "2️⃣ **Что выполняет система:**\n"
+        "• Генерирует X25519 Reality ключи и Dedicated ConfigProfile\n"
+        "• Создает Ноду и Host с правильным SNI в панели Remnawave\n"
+        "• Подключает Inbound ко всем группам/сквадам\n"
+        "• На сервере ноды поднимает Nginx маскировку (Unix Socket + SSL Certbot) и `remnanode` Docker\n"
+        "• Активирует BBR + SSH Харденинг (Ed25519, порт 5422, Fail2ban)\n"
+    )
+    kb = [
+        [InlineKeyboardButton(text="🔙 Назад к Нодам", callback_data="btn_nodes")]
+    ]
+    await callback.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb), parse_mode="Markdown")
+
+@router.callback_query(F.data.startswith("audit_prompt:"))
+async def cb_audit_prompt(callback: types.CallbackQuery):
+    await callback.answer()
+    ip = callback.data.split(":")[1]
+    msg = await callback.message.answer(f"🔍 **Запуск аудита 5/5 для ноды** `{ip}`...\n⏳ Проверка Docker, Nginx, BBR и ядра...")
+    
+    logs = []
+    def progress(p):
+        logs.append(p)
+    
+    ok = await audit_node_async(host=ip, password="", progress_cb=progress)
+    status_text = "✅ **Аудит успешно завершен:**\n\n" if ok else "⚠️ **Результат проверки ноды:**\n\n"
+    for l in logs[-8:]:
+        status_text += f"• {l}\n"
+        
+    await msg.edit_text(status_text, parse_mode="Markdown")
+
+@router.callback_query(F.data.startswith("boost_prompt:"))
+async def cb_boost_prompt(callback: types.CallbackQuery):
+    await callback.answer()
+    ip = callback.data.split(":")[1]
+    msg = await callback.message.answer(f"⚡ **Применение BBRv3 / FQ оптимизации для ноды** `{ip}`...")
+    
+    commands = [
+        "sysctl -w net.core.default_qdisc=fq",
+        "sysctl -w net.ipv4.tcp_congestion_control=bbr",
+        "sysctl -p 2>/dev/null || true"
+    ]
+    logs = []
+    def progress(p):
+        logs.append(p)
+        
+    from services.node_deployer import run_ssh_commands
+    loop = asyncio.get_running_loop()
+    ok = await loop.run_in_executor(None, run_ssh_commands, ip, "", commands, progress)
+    
+    if ok:
+        await msg.edit_text(f"🚀 **Оптимизация BBR / FQ успешно применена на ноде** `{ip}`!", parse_mode="Markdown")
+    else:
+        await msg.edit_text(f"⚠️ Не удалось применить оптимизацию автоматически (проверьте наличие SSH ключа или пароля).", parse_mode="Markdown")
+
+
