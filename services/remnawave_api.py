@@ -369,6 +369,7 @@ class RemnawaveAPIAdapter:
         if not self.base_url or not self.token:
             return {"error": "No API URL or Token provided"}
 
+        # Build payload avoiding null fields that break strict schema validators
         payload = {
             "inbound": {
                 "configProfileUuid": config_uuid,
@@ -380,7 +381,6 @@ class RemnawaveAPIAdapter:
             "path": "",
             "sni": domain,
             "host": "",
-            "alpn": None,
             "fingerprint": "firefox",
             "allowInsecure": False,
             "isDisabled": False,
@@ -393,10 +393,32 @@ class RemnawaveAPIAdapter:
                 async with session.post(f"{self.base_url}/api/hosts", headers=headers, json=payload) as resp:
                     data = await resp.json()
                     logger.info(f"create_host HTTP {resp.status}: {data}")
-                    if resp.status not in (200, 201):
-                        err = data.get("message") or data.get("error") or f"HTTP {resp.status}"
-                        return {"error": err, "status": resp.status, "raw": data}
-                    return data.get("response", data)
+                    if resp.status in (200, 201):
+                        return data.get("response", data)
+                    
+                    # Fallback payload without nested inbound object (for older Remnawave v2 schemas)
+                    fallback_payload = {
+                        "configProfileUuid": config_uuid,
+                        "configProfileInboundUuid": inbound_uuid,
+                        "remark": remark,
+                        "address": domain,
+                        "port": 443,
+                        "path": "",
+                        "sni": domain,
+                        "host": "",
+                        "fingerprint": "firefox",
+                        "allowInsecure": False,
+                        "isDisabled": False,
+                        "securityLayer": "DEFAULT"
+                    }
+                    async with session.post(f"{self.base_url}/api/hosts", headers=headers, json=fallback_payload) as resp2:
+                        data2 = await resp2.json()
+                        logger.info(f"create_host fallback HTTP {resp2.status}: {data2}")
+                        if resp2.status in (200, 201):
+                            return data2.get("response", data2)
+                    
+                    err = data.get("message") or data.get("error") or f"HTTP {resp.status}"
+                    return {"error": err, "status": resp.status, "raw": data}
             except Exception as e:
                 logger.error(f"Exception creating host in Remnawave API: {e}")
                 return {"error": str(e)}
