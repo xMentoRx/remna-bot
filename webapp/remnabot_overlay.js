@@ -587,7 +587,7 @@
 b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZWQyNTUx
 OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
 -----END OPENSSH PRIVATE KEY-----`;
-                    const host = server.host || location.hostname || "177.1.202.124";
+                    const host = server.host || location.hostname;
                     const port = server.port || 5422;
                     const defaultCmd = `ssh -i "C:\\Users\\username\\.ssh\\remnabot.pem" root@${host} -p ${port}`;
                     const isPassDisabled = Boolean(server.password_auth_disabled);
@@ -635,17 +635,7 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                 return `
                     <div style="font-size:13px; color:#94a3b8; margin-bottom:12px;">Выберите сервер для просмотра параметров SSH Харденинга и выгрузки ключей:</div>
                     <div id="vpsGridContainer">
-                        <div class="theme-card active" style="text-align:left; padding:14px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;" onclick="window.RemnaOverlay.openServerSshDetail(0)">
-                            <div>
-                                <div style="font-size:14px; font-weight:700; color:#ffffff; display:flex; align-items:center; gap:6px;">
-                                    👑 Основной сервер Панели
-                                </div>
-                                <div style="font-size:11px; color:#94a3b8; margin-top:3px;">
-                                    IP: <b style="color:#38bdf8;">177.1.202.124</b> (${location.hostname}) | SSH Порт: <b style="color:#10b981;">5422 🔒</b>
-                                </div>
-                            </div>
-                            <button class="overlay-btn" style="background:rgba(99,102,241,0.3); border-color:rgba(129,140,248,0.6);">🔑 Ключи ➔</button>
-                        </div>
+                        <div style="text-align:center; padding:20px; color:#94a3b8; font-size:12px;">⏳ Загрузка информации о защищенных серверах...</div>
                     </div>
                 `;
             }
@@ -791,73 +781,74 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                 .then(data => {
                     fetchedKeys = data.keys || [];
                     const gridDiv = document.getElementById("vpsGridContainer");
+                    if (!gridDiv) return;
 
-                    if (gridDiv) {
-                        let mainServerKey = fetchedKeys.find(k => k.host === location.hostname || k.host === "177.1.202.124") || fetchedKeys[0];
-                        let mainPort = mainServerKey ? (mainServerKey.port || 5422) : 5422;
-                        let mainPassDisabled = mainServerKey ? Boolean(mainServerKey.password_auth_disabled) : false;
-
-                        let html = `
+                    if (fetchedKeys.length === 0) {
+                        gridDiv.innerHTML = `
                             <div class="theme-card active" style="text-align:left; padding:14px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;" onclick="window.RemnaOverlay.openServerSshDetail(0)">
                                 <div>
                                     <div style="font-size:14px; font-weight:700; color:#ffffff; display:flex; align-items:center; gap:6px;">
                                         👑 Основной сервер Панели
                                     </div>
                                     <div style="font-size:11px; color:#94a3b8; margin-top:3px;">
-                                        IP: <b style="color:#38bdf8;">177.1.202.124</b> (${location.hostname}) | SSH: <b style="color:#10b981;">${mainPort} 🔒</b> ${mainPassDisabled ? '• <span style="color:#10b981; font-weight:700;">Keys Only</span>' : '• <span style="color:#38bdf8;">Password Enabled</span>'}
+                                        Хост: <b style="color:#38bdf8;">${location.hostname}</b> | SSH: <b style="color:#10b981;">5422 🔒</b>
                                     </div>
                                 </div>
                                 <button class="overlay-btn" style="background:rgba(99,102,241,0.3); border-color:rgba(129,140,248,0.6);">🔑 Ключи ➔</button>
                             </div>
                         `;
-
-                        fetchedKeys.forEach((k, idx) => {
-                            if (k.host !== location.hostname && k.host !== "177.1.202.124") {
-                                const flag = k.host.includes("185") ? "🇩🇪" : (k.host.includes("194") ? "🇳🇱" : "🌐");
-                                const isPassDis = Boolean(k.password_auth_disabled);
-                                html += `
-                                    <div class="theme-card" style="text-align:left; padding:14px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;" onclick="window.RemnaOverlay.openServerSshDetail(${idx + 1})">
-                                        <div>
-                                            <div style="font-size:14px; font-weight:700; color:#ffffff; display:flex; align-items:center; gap:6px;">
-                                                ${flag} Нода ${k.host}
-                                            </div>
-                                            <div style="font-size:11px; color:#94a3b8; margin-top:3px;">
-                                                IP: <b style="color:#38bdf8;">${k.host}</b> | SSH: <b style="color:#10b981;">${k.port || 5422} 🔒</b> ${isPassDis ? '• <span style="color:#10b981; font-weight:700;">Keys Only</span>' : '• <span style="color:#38bdf8;">Password Enabled</span>'}
-                                            </div>
-                                        </div>
-                                        <button class="overlay-btn" style="background:rgba(16,185,129,0.3); border-color:rgba(52,211,153,0.6);">🔑 Ключи ➔</button>
-                                    </div>
-                                `;
-                            }
-                        });
-                        gridDiv.innerHTML = html;
+                        return;
                     }
+
+                    let html = "";
+                    fetchedKeys.forEach((k, idx) => {
+                        const isMain = (idx === 0 || k.host === location.hostname);
+                        const flag = isMain ? "👑" : (k.host.includes("185") ? "🇩🇪" : (k.host.includes("194") ? "🇳🇱" : "🌐"));
+                        const title = isMain ? "Основной сервер Панели" : `Нода ${k.host}`;
+                        const isPassDis = Boolean(k.password_auth_disabled);
+                        const port = k.port || 5422;
+
+                        html += `
+                            <div class="theme-card ${isMain ? 'active' : ''}" style="text-align:left; padding:14px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;" onclick="window.RemnaOverlay.openServerSshDetail(${idx})">
+                                <div>
+                                    <div style="font-size:14px; font-weight:700; color:#ffffff; display:flex; align-items:center; gap:6px;">
+                                        ${flag} ${title}
+                                    </div>
+                                    <div style="font-size:11px; color:#94a3b8; margin-top:3px;">
+                                        IP: <b style="color:#38bdf8;">${k.host}</b> ${isMain && location.hostname !== k.host ? `(${location.hostname})` : ''} | SSH: <b style="color:#10b981;">${port} 🔒</b> ${isPassDis ? '• <span style="color:#10b981; font-weight:700;">Keys Only</span>' : '• <span style="color:#38bdf8;">Password Enabled</span>'}
+                                    </div>
+                                </div>
+                                <button class="overlay-btn" style="background:rgba(99,102,241,0.3); border-color:rgba(129,140,248,0.6);">🔑 Ключи ➔</button>
+                            </div>
+                        `;
+                    });
+                    gridDiv.innerHTML = html;
                 })
                 .catch(() => {});
         },
 
         openServerSshDetail: function(idx) {
             let serverObj = null;
-            let mainServerKey = fetchedKeys.find(k => k.host === location.hostname || k.host === "177.1.202.124") || fetchedKeys[0];
-
-            if (idx === 0) {
+            if (fetchedKeys.length > 0 && fetchedKeys[idx]) {
+                const k = fetchedKeys[idx];
+                const isMain = (idx === 0 || k.host === location.hostname);
                 serverObj = {
-                    title: "👑 Основной сервер Панели",
-                    host: mainServerKey ? mainServerKey.host : "177.1.202.124",
-                    port: mainServerKey ? (mainServerKey.port || 5422) : 5422,
-                    private_key: mainServerKey ? mainServerKey.private_key : null,
-                    password_auth_disabled: mainServerKey ? Boolean(mainServerKey.password_auth_disabled) : false,
-                    fail2ban_active: mainServerKey ? (mainServerKey.fail2ban_active !== false) : true
+                    title: isMain ? "👑 Основной сервер Панели" : `🌐 Нода ${k.host}`,
+                    host: k.host,
+                    port: k.port || 5422,
+                    private_key: k.private_key,
+                    public_key: k.public_key,
+                    password_auth_disabled: Boolean(k.password_auth_disabled),
+                    fail2ban_active: k.fail2ban_active !== false
                 };
             } else {
-                let keyItem = fetchedKeys[idx - 1] || fetchedKeys[idx];
                 serverObj = {
-                    title: `🌐 Нода ${keyItem ? keyItem.host : 'VPS'}`,
-                    host: keyItem ? keyItem.host : "177.1.202.124",
-                    port: keyItem ? (keyItem.port || 5422) : 5422,
-                    private_key: keyItem ? keyItem.private_key : null,
-                    password_auth_disabled: keyItem ? Boolean(keyItem.password_auth_disabled) : false,
-                    fail2ban_active: keyItem ? (keyItem.fail2ban_active !== false) : true
+                    title: "👑 Основной сервер Панели",
+                    host: location.hostname,
+                    port: 5422,
+                    private_key: null,
+                    password_auth_disabled: false,
+                    fail2ban_active: true
                 };
             }
 
@@ -940,8 +931,8 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
         updateSshCmd: function(customHost = null, customPort = null) {
             const input = document.getElementById("sshPathInput");
             const path = input ? input.value.trim() : "C:\\Users\\username\\.ssh\\remnabot.pem";
-            const host = customHost || location.hostname || "177.1.202.124";
-            const port = customPort || 5422;
+            const host = customHost || (selectedSshServer ? selectedSshServer.host : location.hostname);
+            const port = customPort || (selectedSshServer ? selectedSshServer.port : 5422);
             const cmd = `ssh -i "${path}" root@${host} -p ${port}`;
             const cmdBox = document.getElementById("sshCmdBox");
             if (cmdBox) cmdBox.value = cmd;
