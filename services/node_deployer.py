@@ -136,6 +136,7 @@ def run_node_full_deploy(
     country_code: str = "NL",
     node_secret: str = "",
     panel_url: str = "",
+    node_image: str = "ghcr.io/remnawave/node:latest",
     progress_cb: Optional[Callable[[str], None]] = None
 ) -> bool:
     """Performs full production-grade 1-click deployment of Remnawave Node (Self-Steal + Nginx + Certbot + Xray + BBR + SSH Hardening)."""
@@ -243,12 +244,12 @@ server {{
         with sftp.file(f"/etc/nginx/sites-available/{domain}", "w") as f:
             f.write(nginx_conf)
 
-        # 9. Write Remnawave Node docker-compose.yml
+        # 9. Write Remnawave Node docker-compose.yml with matched node image version
         docker_compose = f"""services:
   remnanode:
     container_name: remnanode
     hostname: remnanode
-    image: ghcr.io/remnawave/node:latest
+    image: {node_image}
     restart: always
     network_mode: host
     cap_add:
@@ -303,7 +304,7 @@ server {{
                 "cd /opt/remnanode && docker compose down --remove-orphans 2>/dev/null || true; "
                 "docker rm -f remnanode 2>/dev/null || true; "
                 "docker compose up -d",
-                "Запуск контейнера Remnawave Node (ghcr.io/remnawave/node:latest)"
+                f"Запуск контейнера Remnawave Node ({node_image})"
             )
 
         # 12. Apply Kernel BBR & Network Optimizations
@@ -337,10 +338,11 @@ async def deploy_node_async(
     country_code: str = "NL",
     node_secret: str = "",
     panel_url: str = "",
+    node_image: str = "ghcr.io/remnawave/node:latest",
     progress_cb: Optional[Callable[[str], None]] = None
 ) -> bool:
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, run_node_full_deploy, host, password, domain, country_code, node_secret, panel_url, progress_cb)
+    return await loop.run_in_executor(None, run_node_full_deploy, host, password, domain, country_code, node_secret, panel_url, node_image, progress_cb)
 
 async def audit_node_async(host: str, password: str, progress_cb: Optional[Callable[[str], None]] = None) -> bool:
     commands = [

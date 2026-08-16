@@ -93,10 +93,18 @@ async def api_deploy_node_handler(request: web.Request) -> web.Response:
         panel_url = settings.get("api_url", "")
         api_token = settings.get("api_token", "")
         node_secret = ""
+        node_image = "ghcr.io/remnawave/node:latest"
 
         if panel_url and api_token:
             try:
                 adapter = RemnawaveAPIAdapter(panel_url, api_token)
+                detected_ver = await adapter.detect_version()
+                logger.info(f"Panel version detected: {detected_ver}")
+                if detected_ver.startswith("v2.") or detected_ver.startswith("2."):
+                    node_image = "ghcr.io/remnawave/node:2.8.0"
+                else:
+                    node_image = "ghcr.io/remnawave/node:latest"
+
                 node_name = clean_api_name(name) if name else f"{country}-{ip}"
                 country_flags = {
                     "NL": "🇳🇱", "DE": "🇩🇪", "FI": "🇫🇮", "SE": "🇸🇪",
@@ -124,7 +132,7 @@ async def api_deploy_node_handler(request: web.Request) -> web.Response:
                     )
                     logger.info(f"Node registered in panel: {node_res}")
 
-                # Step 4: Create Host in panel linked to Inbound
+                # Step 4: Create Host in panel linked to Inbound (without adding to squads, leaving for admin manual testing)
                 if prof_uuid and inbound_uuid:
                     host_res = await adapter.create_host(
                         domain=domain or ip,
@@ -134,26 +142,24 @@ async def api_deploy_node_handler(request: web.Request) -> web.Response:
                     )
                     logger.info(f"Host created in panel: {host_res}")
 
-                    # Step 5: Auto-link inbound to internal squads
-                    await adapter.add_inbound_to_squads(inbound_uuid)
-
             except Exception as e:
                 logger.warning(f"Error during Remnawave API node/host registration: {e}")
 
-        # Step 6: Deploy VPS via SSH (Nginx Unix Socket + Certbot SSL + Docker Compose Node + zapret.dat + UFW + SSH Hardening)
+        # Step 5: Deploy VPS via SSH (Nginx Unix Socket + Certbot SSL + Docker Compose Node + zapret.dat + UFW + SSH Hardening)
         success = await deploy_node_async(
             host=ip,
             password=password,
             domain=domain,
             country_code=country,
             node_secret=node_secret,
-            panel_url=panel_url
+            panel_url=panel_url,
+            node_image=node_image
         )
 
         if success:
             return web.json_response({
                 "status": "success",
-                "message": f"Нода {ip} ({country}) с Self-Steal VLESS-Reality успешно развернута, защищена и добавлена в панель!"
+                "message": f"Нода {ip} ({country}) с Self-Steal VLESS-Reality успешно развернута и зарегистрирована в панели (готовится к тестированию)!"
             })
         else:
             return web.json_response({
