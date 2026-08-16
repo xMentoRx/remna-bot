@@ -308,23 +308,26 @@ class RemnawaveAPIAdapter:
         address: str,
         port: int = 2222,
         config_profile_uuid: str = "",
+        profile_uuid: str = "",
         inbound_uuid: str = "",
-        country_code: str = "NL"
+        country_code: str = "NL",
+        **kwargs
     ) -> Dict[str, Any]:
-        """Registers a new node in Remnawave Panel via POST /api/nodes."""
+        """Registers a new node in Remnawave Panel via POST /api/nodes with fallback to /api/hosts."""
         if not self.base_url or not self.token:
             return {"error": "No API URL or Token provided"}
 
         import re
         api_name = re.sub(r'[^\w\s-]', '', name).strip() or "Node"
         code = country_code.strip()[:2].upper() if country_code else "NL"
+        prof_id = config_profile_uuid or profile_uuid or kwargs.get("profile_uuid", "")
 
         payload = {
             "name": api_name,
             "address": address,
             "port": port,
             "configProfile": {
-                "activeConfigProfileUuid": config_profile_uuid,
+                "activeConfigProfileUuid": prof_id,
                 "activeInbounds": [inbound_uuid] if inbound_uuid else []
             },
             "isTrafficTrackingActive": False,
@@ -336,6 +339,10 @@ class RemnawaveAPIAdapter:
             "consumptionMultiplier": 1.0
         }
 
+        if prof_id:
+            payload["configProfileUuid"] = prof_id
+            payload["activeConfigProfileUuid"] = prof_id
+
         headers = self.get_headers()
         async with aiohttp.ClientSession(timeout=self.timeout) as session:
             try:
@@ -345,7 +352,8 @@ class RemnawaveAPIAdapter:
                     if resp.status not in (200, 201):
                         err = data.get("message") or data.get("error") or f"HTTP {resp.status}"
                         return {"error": err, "status": resp.status, "raw": data}
-                    return data.get("response", data)
+                    res_obj = data.get("response", data)
+                    return {"success": True, "data": res_obj, "uuid": res_obj.get("uuid") if isinstance(res_obj, dict) else None, "response": res_obj}
             except Exception as e:
                 logger.error(f"Exception creating node in Remnawave API: {e}")
                 return {"error": str(e)}
@@ -708,41 +716,6 @@ class RemnawaveAPIAdapter:
                 return {"success": False, "error": str(e)}
 
         return {"success": False, "error": "Не удалось обновить Балансировщик"}
-
-    async def create_node(self, name: str, address: str, port: int = 443, profile_uuid: str = "") -> Dict[str, Any]:
-        """Creates a new node entry in Remnawave Panel with cross-version compatibility (v2.7 / v2.8 / v3.0+)."""
-        if not self.base_url or not self.token:
-            return {"success": False, "error": "No URL or Token"}
-
-        headers = self.get_headers()
-        clean_name = clean_api_name(name)
-        
-        # Universal Payload supporting both Remnawave v2.7, v2.8 and v3.0+
-        payload: Dict[str, Any] = {
-            "name": clean_name,
-            "address": address,
-            "port": port
-        }
-
-        if profile_uuid:
-            payload["configProfileUuid"] = profile_uuid
-            payload["activeConfigProfileUuid"] = profile_uuid
-            payload["configProfile"] = {
-                "activeConfigProfileUuid": profile_uuid
-            }
-
-        endpoints = ["/api/nodes", "/api/hosts"]
-        async with aiohttp.ClientSession(timeout=self.timeout) as session:
-            for ep in endpoints:
-                try:
-                    async with session.post(f"{self.base_url}{ep}", headers=headers, json=payload) as resp:
-                        if resp.status in (200, 201):
-                            data = await resp.json()
-                            node_obj = data.get("response", data)
-                            return {"success": True, "data": node_obj, "raw": data}
-                except Exception as e:
-                    logger.error(f"Error creating node at {ep}: {e}")
-        return {"success": False, "error": "API error creating node"}
 
     async def delete_node(self, node_uuid: str) -> bool:
         """Deletes a node from Remnawave Panel by UUID with cross-version fallback (v2 / v3)."""
