@@ -31,8 +31,15 @@ def generate_ed25519_keypair(comment: str = "remna-bot-key") -> Tuple[str, str]:
     public_key_ssh = f"{public_ssh_bytes} {comment}"
     return private_key_pem, public_key_ssh
 
-def save_stored_key(host: str, private_key_pem: str, public_key_ssh: str, port: int) -> Dict[str, Any]:
-    """Stores key credentials for a host IP in data/ssh_keys.json."""
+def save_stored_key(
+    host: str,
+    private_key_pem: str,
+    public_key_ssh: str,
+    port: int,
+    password_auth_disabled: bool = False,
+    fail2ban_active: bool = True
+) -> Dict[str, Any]:
+    """Stores key credentials and hardening status for a host IP in data/ssh_keys.json."""
     os.makedirs(os.path.dirname(KEYS_FILE), exist_ok=True)
     data = {}
     if os.path.exists(KEYS_FILE):
@@ -46,7 +53,9 @@ def save_stored_key(host: str, private_key_pem: str, public_key_ssh: str, port: 
         "host": host,
         "port": port,
         "private_key": private_key_pem,
-        "public_key": public_key_ssh
+        "public_key": public_ssh,
+        "password_auth_disabled": password_auth_disabled,
+        "fail2ban_active": fail2ban_active
     }
     data[host] = entry
 
@@ -203,7 +212,14 @@ PubkeyAuthentication yes
         exec_cmd("systemctl restart sshd 2>/dev/null || systemctl restart ssh 2>/dev/null", "Перезапуск службы SSH")
 
         # Save to stored keys
-        stored = save_stored_key(host, private_pem, public_ssh, new_port)
+        stored = save_stored_key(
+            host=host,
+            private_key_pem=private_pem,
+            public_key_ssh=public_ssh,
+            port=new_port,
+            password_auth_disabled=disable_password_auth,
+            fail2ban_active=fail2ban_active
+        )
 
         status_msg = f"🎉 Успешно! SSH переведен на порт {new_port}. Защита Fail2ban: {'🟢 Активна' if fail2ban_active else '🟡 Включена'}."
         if disable_password_auth:
@@ -222,15 +238,6 @@ PubkeyAuthentication yes
             "public_key": public_ssh,
             "fail2ban_active": fail2ban_active,
             "password_auth_disabled": disable_password_auth,
-            "ssh_command": f"ssh -i id_ed25519.pem -p {new_port} root@{host}"
-        }ищен: порт {new_port}, вход по паролю отключен!")
-
-        return {
-            "success": True,
-            "host": host,
-            "new_port": new_port,
-            "private_key": private_pem,
-            "public_key": public_ssh,
             "ssh_command": f"ssh -i id_ed25519.pem -p {new_port} root@{host}"
         }
 

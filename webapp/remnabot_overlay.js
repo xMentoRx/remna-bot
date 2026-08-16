@@ -590,6 +590,8 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                     const host = server.host || location.hostname || "177.1.202.124";
                     const port = server.port || 5422;
                     const defaultCmd = `ssh -i "C:\\Users\\username\\.ssh\\remnabot.pem" root@${host} -p ${port}`;
+                    const isPassDisabled = Boolean(server.password_auth_disabled);
+                    const isFail2banActive = server.fail2ban_active !== false;
 
                     return `
                         <button class="overlay-btn" style="margin-bottom:14px; background:rgba(99,102,241,0.2); border-color:rgba(129,140,248,0.5);" onclick="window.RemnaOverlay.backToSshGrid()">⬅️ Назад к списку серверов</button>
@@ -600,9 +602,13 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
 
                         <div style="font-size:12px; color:#cbd5e1; margin-bottom:14px; background:rgba(255,255,255,0.04); padding:12px; border-radius:14px; border:1px solid rgba(255,255,255,0.1);">
                             🔒 <b>Статус защиты VPS:</b> SSH Порт <span style="color:#10b981; font-weight:800;">${port}</span> (Харденинг активен)<br>
-                            🔑 Вход по паролю: <span style="color:#10b981; font-weight:700;">Включен на порту ${port}</span><br>
-                            🛡️ Фильтр брутфорса: <span style="color:#10b981; font-weight:700;">Fail2ban Active</span>
+                            🔑 Вход по паролю: ${isPassDisabled ? '<span style="color:#10b981; font-weight:700;">🚫 Отключен (Только Ed25519 Ключи)</span>' : `<span style="color:#38bdf8; font-weight:700;">🟢 Включен на порту ${port}</span>`}<br>
+                            🛡️ Фильтр брутфорса: <span style="color:${isFail2banActive ? '#10b981' : '#f59e0b'}; font-weight:700;">Fail2ban ${isFail2banActive ? 'Active 🟢' : 'Enabled 🟡'}</span>
                         </div>
+
+                        ${!isPassDisabled ? `
+                        <button class="overlay-btn" style="width:100%; margin-bottom:14px; background:rgba(239,68,68,0.15); border-color:rgba(239,68,68,0.5); color:#fca5a5;" onclick="window.RemnaOverlay.disablePasswordAuthForServer('${host}', ${port})">🔐 Усилить: Отключить вход по паролю</button>
+                        ` : ''}
 
                         <div class="remna-form-group">
                             <label>🔑 Приватный SSH-ключ Ed25519 (.pem):</label>
@@ -787,6 +793,10 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                     const gridDiv = document.getElementById("vpsGridContainer");
 
                     if (gridDiv) {
+                        let mainServerKey = fetchedKeys.find(k => k.host === location.hostname || k.host === "177.1.202.124") || fetchedKeys[0];
+                        let mainPort = mainServerKey ? (mainServerKey.port || 5422) : 5422;
+                        let mainPassDisabled = mainServerKey ? Boolean(mainServerKey.password_auth_disabled) : false;
+
                         let html = `
                             <div class="theme-card active" style="text-align:left; padding:14px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;" onclick="window.RemnaOverlay.openServerSshDetail(0)">
                                 <div>
@@ -794,7 +804,7 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                                         👑 Основной сервер Панели
                                     </div>
                                     <div style="font-size:11px; color:#94a3b8; margin-top:3px;">
-                                        IP: <b style="color:#38bdf8;">177.1.202.124</b> (${location.hostname}) | SSH Порт: <b style="color:#10b981;">5422 🔒</b>
+                                        IP: <b style="color:#38bdf8;">177.1.202.124</b> (${location.hostname}) | SSH: <b style="color:#10b981;">${mainPort} 🔒</b> ${mainPassDisabled ? '• <span style="color:#10b981; font-weight:700;">Keys Only</span>' : '• <span style="color:#38bdf8;">Password Enabled</span>'}
                                     </div>
                                 </div>
                                 <button class="overlay-btn" style="background:rgba(99,102,241,0.3); border-color:rgba(129,140,248,0.6);">🔑 Ключи ➔</button>
@@ -804,6 +814,7 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                         fetchedKeys.forEach((k, idx) => {
                             if (k.host !== location.hostname && k.host !== "177.1.202.124") {
                                 const flag = k.host.includes("185") ? "🇩🇪" : (k.host.includes("194") ? "🇳🇱" : "🌐");
+                                const isPassDis = Boolean(k.password_auth_disabled);
                                 html += `
                                     <div class="theme-card" style="text-align:left; padding:14px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;" onclick="window.RemnaOverlay.openServerSshDetail(${idx + 1})">
                                         <div>
@@ -811,7 +822,7 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                                                 ${flag} Нода ${k.host}
                                             </div>
                                             <div style="font-size:11px; color:#94a3b8; margin-top:3px;">
-                                                IP: <b style="color:#38bdf8;">${k.host}</b> | SSH Порт: <b style="color:#10b981;">${k.port || 5422} 🔒</b>
+                                                IP: <b style="color:#38bdf8;">${k.host}</b> | SSH: <b style="color:#10b981;">${k.port || 5422} 🔒</b> ${isPassDis ? '• <span style="color:#10b981; font-weight:700;">Keys Only</span>' : '• <span style="color:#38bdf8;">Password Enabled</span>'}
                                             </div>
                                         </div>
                                         <button class="overlay-btn" style="background:rgba(16,185,129,0.3); border-color:rgba(52,211,153,0.6);">🔑 Ключи ➔</button>
@@ -827,12 +838,16 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
 
         openServerSshDetail: function(idx) {
             let serverObj = null;
+            let mainServerKey = fetchedKeys.find(k => k.host === location.hostname || k.host === "177.1.202.124") || fetchedKeys[0];
+
             if (idx === 0) {
                 serverObj = {
                     title: "👑 Основной сервер Панели",
-                    host: "177.1.202.124",
-                    port: 5422,
-                    private_key: (fetchedKeys[0] ? fetchedKeys[0].private_key : null)
+                    host: mainServerKey ? mainServerKey.host : "177.1.202.124",
+                    port: mainServerKey ? (mainServerKey.port || 5422) : 5422,
+                    private_key: mainServerKey ? mainServerKey.private_key : null,
+                    password_auth_disabled: mainServerKey ? Boolean(mainServerKey.password_auth_disabled) : false,
+                    fail2ban_active: mainServerKey ? (mainServerKey.fail2ban_active !== false) : true
                 };
             } else {
                 let keyItem = fetchedKeys[idx - 1] || fetchedKeys[idx];
@@ -840,13 +855,51 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
                     title: `🌐 Нода ${keyItem ? keyItem.host : 'VPS'}`,
                     host: keyItem ? keyItem.host : "177.1.202.124",
                     port: keyItem ? (keyItem.port || 5422) : 5422,
-                    private_key: keyItem ? keyItem.private_key : null
+                    private_key: keyItem ? keyItem.private_key : null,
+                    password_auth_disabled: keyItem ? Boolean(keyItem.password_auth_disabled) : false,
+                    fail2ban_active: keyItem ? (keyItem.fail2ban_active !== false) : true
                 };
             }
 
             selectedSshServer = serverObj;
             const body = document.getElementById("remnaTabBody");
             if (body) body.innerHTML = this.getTabHtml('ssh');
+        },
+
+        disablePasswordAuthForServer: function(host, port) {
+            const pass = prompt(`Введите текущий root-пароль от ${host} для отключения авторизации по паролю (вход останется исключительно по Ed25519 SSH-ключам):`);
+            if (!pass) return;
+
+            showToast(`🔐 Отключение входа по паролю на ${host}...`);
+            fetch('/api/security/harden', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ip: host,
+                    password: pass,
+                    current_port: port || 5422,
+                    new_port: port || 5422,
+                    install_crowdsec: true,
+                    disable_password: true
+                })
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    showToast(`✅ Вход по паролю на ${host} отключен! SSH доступ только по ключу.`);
+                    if (selectedSshServer) {
+                        selectedSshServer.password_auth_disabled = true;
+                        if (res.private_key) selectedSshServer.private_key = res.private_key;
+                    }
+                    const body = document.getElementById("remnaTabBody");
+                    if (body) body.innerHTML = this.getTabHtml('ssh');
+                } else {
+                    showToast(`❌ Ошибка: ${res.error || 'Не удалось отключить пароль'}`);
+                }
+            })
+            .catch(err => {
+                showToast(`❌ Ошибка сети: ${err}`);
+            });
         },
 
         backToSshGrid: function() {
@@ -975,15 +1028,84 @@ OQAAACCgHmHxzckNTxYy5/JjlSdzIHrFl90HG01WCGEuSHA8GAAAAIiadxR/mncUfw...
         }
     };
 
+    // --- React Safe Input Dispatcher & Auto-Session Manager ---
+    function setReactInputValue(input, val) {
+        if (!input) return;
+        const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+        if (nativeSetter) {
+            nativeSetter.call(input, val);
+        } else {
+            input.value = val;
+        }
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    let autoLoginInProgress = false;
+
+    function handleAutoLoginBridge() {
+        // Detect login screen by presence of password field and submit button
+        const passInput = document.querySelector('input[type="password"]:not(#nodePassInput):not(#hardenPass)');
+        if (!passInput) return;
+
+        const userInput = document.querySelector('input[name="username"], input[autocomplete="username"]') ||
+                          document.querySelector('input[type="text"]:not(#nodeIpInput):not(#nodeDomainInput):not(#nodeNameInput):not(#countrySearchInput):not(#sshPathInput):not(#hardenIp)');
+        const submitBtn = document.querySelector('button[type="submit"]') ||
+                          Array.from(document.querySelectorAll('button')).find(b => b.innerText && (b.innerText.includes('Войти') || b.innerText.toLowerCase().includes('sign in') || b.innerText.toLowerCase().includes('login')));
+
+        if (!submitBtn) return;
+
+        // Auto-attach credential listener on submit
+        if (!submitBtn.dataset.remnaListener) {
+            submitBtn.dataset.remnaListener = "true";
+            submitBtn.addEventListener("click", () => {
+                if (passInput && passInput.value) {
+                    const uVal = userInput && userInput.value ? userInput.value : "admin";
+                    const creds = { username: uVal, password: passInput.value, savedAt: Date.now() };
+                    localStorage.setItem("remnabot_saved_session", JSON.stringify(creds));
+                    console.log("⚡ Remna-Bot: Авто-сессия сохранена для Telegram WebApp");
+                }
+            });
+        }
+
+        // Try automatic login if session was saved previously
+        if (!autoLoginInProgress) {
+            const savedStr = localStorage.getItem("remnabot_saved_session");
+            if (savedStr) {
+                try {
+                    const creds = JSON.parse(savedStr);
+                    if (creds && creds.password) {
+                        autoLoginInProgress = true;
+                        showToast("⚡ Авторизация в панели Remnawave...");
+                        if (userInput && creds.username) {
+                            setReactInputValue(userInput, creds.username);
+                        }
+                        setReactInputValue(passInput, creds.password);
+                        setTimeout(() => {
+                            submitBtn.click();
+                            // Reset flag after delay if login failed
+                            setTimeout(() => { autoLoginInProgress = false; }, 4000);
+                        }, 250);
+                    }
+                } catch (e) {
+                    console.error("Auto-login parse error:", e);
+                }
+            }
+        }
+    }
+
     function init() {
         applyColorEngine();
         initCanvasFx();
         injectOverlayBar();
         injectSidebarItem();
+        handleAutoLoginBridge();
+
         setInterval(() => {
             injectSidebarItem();
             injectOverlayBar();
             applyColorEngine();
+            handleAutoLoginBridge();
         }, 500);
     }
 
