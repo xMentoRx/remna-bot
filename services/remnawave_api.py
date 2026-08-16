@@ -260,35 +260,47 @@ class RemnawaveAPIAdapter:
         }
 
         async with aiohttp.ClientSession(timeout=self.timeout) as session:
+            prof_uuid = None
+            inbound_uuid = None
+
             try:
                 async with session.post(f"{self.base_url}/api/config-profiles", headers=headers, json=payload) as resp:
+                    data = await resp.json()
+                    logger.info(f"POST /api/config-profiles status: {resp.status} - data: {data}")
                     if resp.status in (200, 201):
-                        data = await resp.json()
                         res = data.get("response", data)
-                        prof_uuid = res.get("uuid") or res.get("id")
-                        inbounds = res.get("inbounds", [])
-                        inbound_uuid = inbounds[0].get("uuid") if inbounds else None
-                        logger.info(f"Created dedicated Self-Steal Profile '{payload['name']}' ({prof_uuid}), Inbound: {inbound_uuid}")
-                        return prof_uuid, inbound_uuid
+                        prof_uuid = res.get("uuid") or res.get("id") or (res.get("configProfile", {}).get("uuid") if isinstance(res.get("configProfile"), dict) else None)
+                        inbounds = res.get("inbounds") or (res.get("config", {}).get("inbounds") if isinstance(res.get("config"), dict) else None) or []
+                        if inbounds and isinstance(inbounds, list) and len(inbounds) > 0 and isinstance(inbounds[0], dict):
+                            inbound_uuid = inbounds[0].get("uuid")
             except Exception as e:
-                logger.warning(f"Self-steal profile creation failed: {e}")
+                logger.warning(f"Self-steal profile creation POST error: {e}")
 
-            # Fallback: Get existing profile if already exists
+            # Always query GET /api/config-profiles to ensure accurate inbound_uuid from PostgreSQL
             try:
                 async with session.get(f"{self.base_url}/api/config-profiles", headers=headers) as resp:
                     if resp.status == 200:
                         data = await resp.json()
-                        profiles = data if isinstance(data, list) else data.get("response", {}).get("configProfiles", data.get("configProfiles", []))
-                        if profiles and isinstance(profiles, list) and len(profiles) > 0:
-                            first_p = profiles[0]
-                            p_uuid = first_p.get("uuid") or first_p.get("id")
-                            p_inbounds = first_p.get("inbounds", [])
-                            ib_uuid = p_inbounds[0].get("uuid") if p_inbounds else None
-                            return p_uuid, ib_uuid
+                        profiles = data if isinstance(data, list) else data.get("response", {}).get("configProfiles", data.get("configProfiles", data.get("response", [])))
+                        if isinstance(profiles, list):
+                            for p in profiles:
+                                if prof_uuid and (p.get("uuid") == prof_uuid or p.get("id") == prof_uuid):
+                                    prof_uuid = p.get("uuid") or p.get("id")
+                                    p_inbounds = p.get("inbounds", [])
+                                    if p_inbounds and isinstance(p_inbounds, list) and len(p_inbounds) > 0:
+                                        inbound_uuid = p_inbounds[0].get("uuid") if isinstance(p_inbounds[0], dict) else str(p_inbounds[0])
+                                    break
+                                elif not prof_uuid and p.get("name") == payload["name"]:
+                                    prof_uuid = p.get("uuid") or p.get("id")
+                                    p_inbounds = p.get("inbounds", [])
+                                    if p_inbounds and isinstance(p_inbounds, list) and len(p_inbounds) > 0:
+                                        inbound_uuid = p_inbounds[0].get("uuid") if isinstance(p_inbounds[0], dict) else str(p_inbounds[0])
+                                    break
             except Exception as e:
-                logger.warning(f"Failed fetching fallback config profiles: {e}")
+                logger.warning(f"Failed fetching config profiles list: {e}")
 
-        return None, None
+            logger.info(f"Resolved Self-Steal Profile: uuid={prof_uuid}, inbound_uuid={inbound_uuid}")
+            return prof_uuid, inbound_uuid
 
     async def create_node(
         self,
@@ -301,10 +313,12 @@ class RemnawaveAPIAdapter:
     ) -> Dict[str, Any]:
         """Registers a new node in Remnawave Panel via POST /api/nodes."""
         if not self.base_url or not self.token:
-            return {}
+            return {"error": "No API URL or Token provided"}
 
         import re
         api_name = re.sub(r'[^\w\s-]', '', name).strip() or "Node"
+        code = country_code.strip()[:2].upper() if country_code else "NL"
+
         payload = {
             "name": api_name,
             "address": address,
@@ -318,7 +332,7 @@ class RemnawaveAPIAdapter:
             "notifyPercent": 0,
             "trafficResetDay": 31,
             "excludedInbounds": [],
-            "countryCode": country_code.upper(),
+            "countryCode": code,
             "consumptionMultiplier": 1.0
         }
 
@@ -327,11 +341,14 @@ class RemnawaveAPIAdapter:
             try:
                 async with session.post(f"{self.base_url}/api/nodes", headers=headers, json=payload) as resp:
                     data = await resp.json()
-                    logger.info(f"create_node response: {resp.status} - {data}")
+                    logger.info(f"create_node HTTP {resp.status}: {data}")
+                    if resp.status not in (200, 201):
+                        err = data.get("message") or data.get("error") or f"HTTP {resp.status}"
+                        return {"error": err, "status": resp.status, "raw": data}
                     return data.get("response", data)
             except Exception as e:
-                logger.error(f"Error creating node in Remnawave API: {e}")
-                return {}
+                logger.error(f"Exception creating node in Remnawave API: {e}")
+                return {"error": str(e)}
 
     async def create_host(
         self,
@@ -342,7 +359,7 @@ class RemnawaveAPIAdapter:
     ) -> Dict[str, Any]:
         """Creates Host entry linked to the Inbound via POST /api/hosts."""
         if not self.base_url or not self.token:
-            return {}
+            return {"error": "No API URL or Token provided"}
 
         payload = {
             "inbound": {
@@ -367,11 +384,14 @@ class RemnawaveAPIAdapter:
             try:
                 async with session.post(f"{self.base_url}/api/hosts", headers=headers, json=payload) as resp:
                     data = await resp.json()
-                    logger.info(f"create_host response: {resp.status} - {data}")
+                    logger.info(f"create_host HTTP {resp.status}: {data}")
+                    if resp.status not in (200, 201):
+                        err = data.get("message") or data.get("error") or f"HTTP {resp.status}"
+                        return {"error": err, "status": resp.status, "raw": data}
                     return data.get("response", data)
             except Exception as e:
-                logger.error(f"Error creating host in Remnawave API: {e}")
-                return {}
+                logger.error(f"Exception creating host in Remnawave API: {e}")
+                return {"error": str(e)}
 
     async def add_inbound_to_squads(self, inbound_uuid: str) -> bool:
         """Adds a newly created Inbound to all internal squads so client keys include this node."""

@@ -83,7 +83,7 @@ async def api_deploy_node_handler(request: web.Request) -> web.Response:
         password = (data.get("password") or "").strip()
         name = (data.get("name") or "").strip()
         country = (data.get("country") or "DE").upper()
-        domain = (data.get("domain") or "sub.remna-bot.xyz").strip()
+        domain = (data.get("domain") or "").strip() or ip
 
         if not (ip and password):
             return web.json_response({"status": "error", "message": "Укажите IP и пароль ноды"}, status=400)
@@ -120,20 +120,30 @@ async def api_deploy_node_handler(request: web.Request) -> web.Response:
                 prof_uuid, inbound_uuid = await adapter.create_self_steal_profile(node_name=node_name, domain=domain)
                 logger.info(f"Self-Steal Profile created: profile={prof_uuid}, inbound={inbound_uuid}")
 
-                # Step 3: Register node in panel
-                if prof_uuid:
-                    node_res = await adapter.create_node(
-                        name=node_name,
-                        address=domain or ip,
-                        port=2222,
-                        config_profile_uuid=prof_uuid,
-                        inbound_uuid=inbound_uuid or "",
-                        country_code=country
-                    )
-                    logger.info(f"Node registered in panel: {node_res}")
+                if not prof_uuid:
+                    return web.json_response({
+                        "status": "error",
+                        "message": "Ошибка создания Config Profile в панели Remnawave (проверьте права токена)"
+                    }, status=400)
 
-                # Step 4: Create Host in panel linked to Inbound (without adding to squads, leaving for admin manual testing)
-                if prof_uuid and inbound_uuid:
+                # Step 3: Register node in panel
+                node_res = await adapter.create_node(
+                    name=node_name,
+                    address=domain or ip,
+                    port=2222,
+                    config_profile_uuid=prof_uuid,
+                    inbound_uuid=inbound_uuid or "",
+                    country_code=country
+                )
+                logger.info(f"Node registered in panel: {node_res}")
+                if node_res.get("error"):
+                    return web.json_response({
+                        "status": "error",
+                        "message": f"Ошибка создания ноды в панели Remnawave: {node_res.get('error')}"
+                    }, status=400)
+
+                # Step 4: Create Host in panel linked to Inbound
+                if inbound_uuid:
                     host_res = await adapter.create_host(
                         domain=domain or ip,
                         config_uuid=prof_uuid,
@@ -141,9 +151,18 @@ async def api_deploy_node_handler(request: web.Request) -> web.Response:
                         remark=host_remark
                     )
                     logger.info(f"Host created in panel: {host_res}")
+                    if host_res.get("error"):
+                        return web.json_response({
+                            "status": "error",
+                            "message": f"Ошибка создания хоста в панели Remnawave: {host_res.get('error')}"
+                        }, status=400)
 
             except Exception as e:
-                logger.warning(f"Error during Remnawave API node/host registration: {e}")
+                logger.error(f"Error during Remnawave API node/host registration: {e}")
+                return web.json_response({
+                    "status": "error",
+                    "message": f"Ошибка API панели: {str(e)}"
+                }, status=500)
 
         # Step 5: Deploy VPS via SSH (Nginx Unix Socket + Certbot SSL + Docker Compose Node + zapret.dat + UFW + SSH Hardening)
         success = await deploy_node_async(
